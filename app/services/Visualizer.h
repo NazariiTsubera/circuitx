@@ -5,6 +5,7 @@
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 
+#include <queue>
 #include <vector>
 
 #include <circuitx/circuit.hpp>
@@ -26,19 +27,28 @@ struct VisuaElement {
     sf::Text label;
 };
 
-class Visualizer {
-private:
+
+struct Layout {
     std::vector<VisualNode> nodes;
     std::vector<VisuaElement> elements;
+};
 
-    sf::VertexArray nodesVA;
-    sf::VertexArray elementsVA;
+struct VisualizerContext;
+
+class Visualizer {
+private:
+    Layout layout;
+    std::vector<std::unique_ptr<sf::Drawable>> renderQueue;
+    VisualizerContext *context;
 public:
-    Visualizer() : nodes(), elements() {};
-    ~Visualizer() = default;
+    Visualizer();
+    ~Visualizer();
 
-    void build(circuitx::Circuit circuit); // must call before all draw calls
+    void build(circuitx::Circuit circuit);
     void draw(sf::RenderTarget& target) const;
+private:
+    void buildNodes(float r);
+    void buildElements();
 };
 
 

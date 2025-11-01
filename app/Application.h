@@ -7,6 +7,8 @@
 #include <circuitx/circuit.hpp>
 #include <imgui.h>
 
+#include "services/UiService.h"
+#include "services/Visualizer.h"
 #include "SFML/Graphics/RenderWindow.hpp"
 
 struct AppContext;
@@ -14,7 +16,10 @@ struct AppContext;
 class Application {
 private:
     sf::RenderWindow window;
-    AppContext* context;
+    sf::Clock clock;
+    circuitx::Circuit circuit;
+    Visualizer visualizer;
+    UiService uiService;
 public:
     Application();
     ~Application();
@@ -22,8 +27,6 @@ public:
 private:
     void handleEvents();
     void render();
-    void configureHiDPISupport();
-    float computePixelScale() const;
 };
 
 

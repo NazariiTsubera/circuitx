@@ -20,19 +20,26 @@ if (NOT TARGET sfml-system)
             GIT_TAG 2.6.1
     )
     FetchContent_MakeAvailable(sfml)
+
+    foreach(component IN ITEMS Graphics Window System Audio Network)
+        string(TOLOWER "${component}" component_lc)
+        if (TARGET sfml-${component_lc} AND NOT TARGET SFML::${component})
+            add_library(SFML::${component} ALIAS sfml-${component_lc})
+        endif ()
+    endforeach()
 endif ()
 
 if (NOT TARGET ImGui-SFML::ImGui-SFML)
     set(IMGUI_SFML_FIND_SFML OFF CACHE BOOL "" FORCE)
     set(IMGUI_SFML_USE_SFML_CONFIG OFF CACHE BOOL "" FORCE)
-    set(IMGUI_SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(IMGUI_SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FOR1CE)
     set(IMGUI_SFML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
     # imgui-sfml v2.6 targets Dear ImGui 1.89.2; keep versions in sync unless both are upgraded.
     FetchContent_Declare(
             imgui
             GIT_REPOSITORY https://github.com/ocornut/imgui.git
-            GIT_TAG v1.89.2
+            GIT_TAG v1.90.6-docking
     )
     FetchContent_MakeAvailable(imgui)
     set(IMGUI_DIR "${imgui_SOURCE_DIR}" CACHE PATH "Dear ImGui root for ImGui-SFML" FORCE)
@@ -73,8 +80,10 @@ add_executable(app
         app/main.cpp
         app/Application.cpp
         app/Application.h
-        app/Visualizer.cpp
-        app/Visualizer.h
+        app/services/Visualizer.cpp
+        app/services/Visualizer.h
+        app/services/UiService.cpp
+        app/services/UiService.h
 )
 
 add_library(circuitx STATIC
