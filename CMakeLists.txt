@@ -5,31 +5,9 @@ set(CMAKE_CXX_STANDARD 26)
 
 include(FetchContent)
 
-# Cache options ahead of time so FetchContent reuses them on reconfigure.
 set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE CACHE BOOL "Skip FetchContent updates" FORCE)
 
 if (NOT TARGET sfml-system)
-    # SFML provides windowing/audio/graphics utilities used by the demo app.
-    set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
-    set(SFML_BUILD_NETWORK ON CACHE BOOL "" FORCE)
-    set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
-    set(SFML_USE_SYSTEM_DEPS OFF CACHE BOOL "" FORCE)
-
-    FetchContent_Declare(
-            sfml
-            GIT_REPOSITORY https://github.com/SFML/SFML.git
-            GIT_TAG 2.6.1
-    )
-    FetchContent_MakeAvailable(sfml)
-endif ()
-
-
-# Avoid refetching dependencies after initial download.
-set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE CACHE BOOL "Skip FetchContent updates" FORCE)
-
-if (NOT TARGET sfml-system)
-    # Configure SFML FetchContent (2.6.1) without docs/examples.
     set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
     set(SFML_BUILD_NETWORK ON CACHE BOOL "" FORCE)
@@ -45,38 +23,67 @@ if (NOT TARGET sfml-system)
 endif ()
 
 if (NOT TARGET ImGui-SFML::ImGui-SFML)
-    set(IMGUI_SFML_FIND_SFML ON CACHE BOOL "" FORCE)
+    set(IMGUI_SFML_FIND_SFML OFF CACHE BOOL "" FORCE)
     set(IMGUI_SFML_USE_SFML_CONFIG OFF CACHE BOOL "" FORCE)
     set(IMGUI_SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(IMGUI_SFML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
+    # imgui-sfml v2.6 targets Dear ImGui 1.89.2; keep versions in sync unless both are upgraded.
     FetchContent_Declare(
             imgui
             GIT_REPOSITORY https://github.com/ocornut/imgui.git
-            GIT_TAG v1.91.1
+            GIT_TAG v1.89.2
     )
+    FetchContent_MakeAvailable(imgui)
+    set(IMGUI_DIR "${imgui_SOURCE_DIR}" CACHE PATH "Dear ImGui root for ImGui-SFML" FORCE)
 
     FetchContent_Declare(
             imgui-sfml
             GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
             GIT_TAG v2.6
     )
-
-    FetchContent_MakeAvailable(imgui imgui-sfml)
+    FetchContent_MakeAvailable(imgui-sfml)
 endif ()
 
+if (NOT TARGET nlohmann_json::nlohmann_json)
+    set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 
+    FetchContent_Declare(
+            nlohmann_json
+            GIT_REPOSITORY https://github.com/nlohmann/json.git
+            GIT_TAG v3.11.3
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+endif ()
 
-add_executable(demo demo/main.cpp
-        demo/Application.cpp
-        demo/Application.h)
+if (NOT TARGET Eigen3::Eigen)
+    set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+    set(EIGEN_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 
-add_library(circuitx STATIC
-        src/circuit.cpp
+    FetchContent_Declare(
+            eigen
+            GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+            GIT_TAG 3.4.0
+    )
+    FetchContent_MakeAvailable(eigen)
+endif ()
+
+add_executable(app
+        app/main.cpp
+        app/Application.cpp
+        app/Application.h
+        app/Visualizer.cpp
+        app/Visualizer.h
 )
 
-target_include_directories(circuitx PUBLIC include/)
+add_library(circuitx STATIC
+        solver/src/circuit.cpp
+)
 
-target_link_libraries(demo PUBLIC circuitx)
-target_link_libraries(demo PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
-target_link_libraries(demo PRIVATE ImGui-SFML::ImGui-SFML)
+target_include_directories(circuitx PUBLIC solver/include/)
+
+target_link_libraries(app PUBLIC circuitx)
+target_link_libraries(circuitx PUBLIC nlohmann_json::nlohmann_json Eigen3::Eigen)
+target_link_libraries(app PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
+target_link_libraries(app PRIVATE ImGui-SFML::ImGui-SFML)
