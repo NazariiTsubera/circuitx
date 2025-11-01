@@ -84,6 +84,8 @@ add_executable(app
         app/services/Visualizer.h
         app/services/UiService.cpp
         app/services/UiService.h
+        app/helpers/GridRenderer.hpp
+        app/helpers/AssetManager.hpp
 )
 
 add_library(circuitx STATIC

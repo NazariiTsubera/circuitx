@@ -8,26 +8,20 @@
 #include <SFML/Graphics/Vertex.hpp>
 
 #include "SFML/Graphics/CircleShape.hpp"
+#include "SFML/Graphics/RenderWindow.hpp"
 
+Visualizer::Visualizer(const AssetManager& assetManager)
+    :  layout{}, renderQueue(), assetManager(assetManager)
+{}
 
-
-struct VisualizerContext {
-    sf::Texture capacitor;
-    sf::Texture resistor;
-    sf::Texture node;
-    sf::Texture vsource;
-    sf::Texture isource;
-};
-
-
-Visualizer::Visualizer()
-    :  layout{}, renderQueue()
-{
-    context = new VisualizerContext();
+Visualizer::Visualizer(const sf::View& view, const AssetManager& assetManager) : Visualizer(assetManager) {
+    update(view);
 }
 
-Visualizer::~Visualizer() {
-    delete context;
+Visualizer::~Visualizer() {}
+
+void Visualizer::update(const sf::View &view) {
+    gridRenderer.update(view);
 }
 
 
@@ -53,10 +47,14 @@ void Visualizer::build(circuitx::Circuit circuit) {
 
 }
 
+
 void Visualizer::draw(sf::RenderTarget& target) const {
     target.clear(sf::Color::White);
+
+    gridRenderer.draw(target, sf::RenderStates::Default);
 
     for (auto& drawable : renderQueue) {
         target.draw(*drawable, sf::RenderStates::Default);
     }
 }
+

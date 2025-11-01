@@ -6,15 +6,25 @@
 
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <iostream>
 #include <stdexcept>
 
+#include "../helpers/AssetManager.hpp"
 
-UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer):
+
+UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager):
     window(window),
-    visualizer(visualizer)
+    visualizer(visualizer),
+    assetManager(assetManager),
+    components()
 {
     canvasTexture.create(window.getSize().x, window.getSize().y);
     const bool imguiInitialized = ImGui::SFML::Init(window);
+
+    components.push_back({ComponentType::Resistor, assetManager.getTexture("resistor")});
+    components.push_back({ComponentType::Capacitor, assetManager.getTexture("capacitor")});
+    components.push_back({ComponentType::ISource, assetManager.getTexture("isource")});
+    components.push_back({ComponentType::VSource, assetManager.getTexture("vsource")});
 
     if (!imguiInitialized) {
         throw std::runtime_error("Failed to initialize ImGui-SFML.");
@@ -48,13 +58,39 @@ UiService::~UiService() {
 }
 
 
-
 void UiService::drawCanvas() {
+
+    ImGui::Begin("Canvas");
+
+    ImVec2 availableSize = ImGui::GetContentRegionAvail();
+
+    if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
+        canvasSize = availableSize;
+        canvasTexture.create(canvasSize.x, canvasSize.y);
+
+        if (resizeCallback) {
+            resizeCallback(canvasSize);
+        }
+    }
+
     canvasTexture.clear();
     visualizer.draw(canvasTexture);
     canvasTexture.display();
 
-    ImGui::Begin("Canvas");
+    // in order to make button overlay
+    ImVec2 screenPos = ImGui::GetCursorScreenPos();
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    ImGui::InvisibleButton("#inv_button", availableSize);
+    ImGui::PopStyleVar();
+    ImGui::SetCursorScreenPos(screenPos);
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        ImVec2 mousePos = ImGui::GetMousePos();
+        std::cout << mousePos.x << ", " << mousePos.y << std::endl;
+    }
+
+
     ImGui::Image(canvasTexture.getTexture());
     ImGui::End();
 }
@@ -62,6 +98,16 @@ void UiService::drawCanvas() {
 void UiService::drawPalette() {
     ImGui::Begin("Palette");
 
+    ImGui::BeginChild("#pallete_wrapper", ImVec2(0, 0), false,
+        ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    ImGui::BeginTable("Table", 4);
+
+    for (auto& component : components) {
+        ImGui::TableNextColumn();
+        ImGui::ImageButton(component.texture, ImVec2(50, 50), 3, sf::Color::White);
+    }
+    ImGui::EndTable();
+    ImGui::EndChild();
     ImGui::End();
 }
 
@@ -86,3 +132,4 @@ void UiService::drawUI() {
     drawPalette();
     drawCanvas();
 }
+

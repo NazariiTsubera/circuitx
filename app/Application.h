@@ -10,6 +10,7 @@
 #include "services/UiService.h"
 #include "services/Visualizer.h"
 #include "SFML/Graphics/RenderWindow.hpp"
+#include "helpers/AssetManager.hpp"
 
 struct AppContext;
 
@@ -18,6 +19,7 @@ private:
     sf::RenderWindow window;
     sf::Clock clock;
     circuitx::Circuit circuit;
+    AssetManager assetManager;
     Visualizer visualizer;
     UiService uiService;
 public:

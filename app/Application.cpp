@@ -27,12 +27,20 @@ Application::Application()
     :
     window(sf::RenderWindow(sf::VideoMode::getDesktopMode(),"Circuitx", sf::Style::Titlebar | sf::Style::Default)),
     clock(),
-    visualizer(),
-    uiService(window, visualizer)
-{}
+    assetManager("../res/"),
+    visualizer(assetManager),
+    uiService(window, visualizer, assetManager)
+{
+    uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
+        sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);
+        visualizer.update(view);
+    });
+
+}
 
 
 Application::~Application() {}
+
 
 
 

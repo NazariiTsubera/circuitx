@@ -15,7 +15,12 @@
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/System/Vector2.hpp>
+#include "../helpers/GridRenderer.hpp"
 
+#include "SFML/Graphics/CircleShape.hpp"
+
+
+class AssetManager;
 
 struct VisualNode {
     unsigned int id;
@@ -39,13 +44,17 @@ class Visualizer {
 private:
     Layout layout;
     std::vector<std::unique_ptr<sf::Drawable>> renderQueue;
-    VisualizerContext *context;
+    GridRenderer gridRenderer;
+    const AssetManager& assetManager;
 public:
-    Visualizer();
+    Visualizer(const AssetManager& asset_manager);
+    Visualizer(const sf::View &view, const AssetManager& asset_manager);
     ~Visualizer();
 
+    void update(const sf::View &view);
     void build(circuitx::Circuit circuit);
     void draw(sf::RenderTarget& target) const;
+
 private:
     void buildNodes(float r);
     void buildElements();
