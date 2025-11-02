@@ -10,28 +10,25 @@
 #include "SFML/Graphics/CircleShape.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
 
-Visualizer::Visualizer(const AssetManager& assetManager)
-    :  layout{}, renderQueue(), assetManager(assetManager)
+Visualizer::Visualizer(const AssetManager& assetManager, const GridSettings& gridSettings, const CircuitView& circuitView)
+    :  renderQueue(), assetManager(assetManager), gridSettings(gridSettings), circuitView(circuitView)
 {}
 
-Visualizer::Visualizer(const sf::View& view, const AssetManager& assetManager) : Visualizer(assetManager) {
+Visualizer::Visualizer(const sf::View& view, const AssetManager& assetManager, const GridSettings& gridSettings, const CircuitView& circuitView)
+    : Visualizer(assetManager, gridSettings, circuitView )
+{
     update(view);
 }
 
 Visualizer::~Visualizer() {}
 
 void Visualizer::update(const sf::View &view) {
-    gridRenderer.update(view);
+    gridRenderer.update(view, gridSettings);
 }
 
 
 void Visualizer::buildNodes(float r) {
-    for (VisualNode node : layout.nodes) {
-        std::unique_ptr<sf::CircleShape> circle = std::make_unique<sf::CircleShape>();
-        circle->setRadius(r);
-        circle->setOrigin(node.position);
-        renderQueue.push_back(std::move(circle));
-    }
+
 }
 
 void Visualizer::buildElements() {
@@ -40,11 +37,15 @@ void Visualizer::buildElements() {
 
 
 
-void Visualizer::build(circuitx::Circuit circuit) {
-    std::vector nodes = circuit.getNodes();
-    std::vector elements = circuit.getElements();
+void Visualizer::build(const CircuitView& view) {
+    renderQueue.clear();
 
-
+    for (auto& node : view.getNodes()) {
+        auto circleNode = std::make_unique<sf::CircleShape>();
+        circleNode->setRadius(2.f);
+        circleNode->setOrigin(node.second);
+        renderQueue.emplace_back(std::move(circleNode));
+    }
 }
 
 void Visualizer::drawWire(sf::RenderTarget& target, const WirePreview& preview) const {

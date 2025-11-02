@@ -5,6 +5,7 @@
 #ifndef CIRCUIT_HPP
 #define CIRCUIT_HPP
 
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <variant>
 #include <vector>
@@ -32,6 +33,7 @@ namespace circuitx {
 
         [[nodiscard]] std::vector<Element> getElements() const { return elements; }
         [[nodiscard]] std::vector<Node> getNodes() const { return nodes; }
+        [[nodiscard]] nlohmann::json toJson() const;
     private:
         std::vector<Node> nodes;
         std::vector<Element> elements;

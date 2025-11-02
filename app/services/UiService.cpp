@@ -12,12 +12,13 @@
 #include "../helpers/AssetManager.hpp"
 
 
-UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool):
+UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController):
     window(window),
     visualizer(visualizer),
     assetManager(assetManager),
     gridTool(gridTool),
-    wireTool(gridTool)
+    wireTool(gridTool),
+    circuitController(circuitController)
 {
 
     const bool imguiInitialized = ImGui::SFML::Init(window);
@@ -102,29 +103,31 @@ void UiService::drawCanvas() {
     ImGui::PopStyleVar();
     ImGui::SetCursorScreenPos(screenPos);
 
-    // sf::Vector2f mousePos = gridTool.screenToWorld(ImGui::GetMousePos());
+    //Events
+    {
+        ImVec2 mousePos = ImGui::GetMousePos();
 
-    sf::Vector2 mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+        if (ImGui::BeginDragDropTarget()) {
+            if (auto imguiPayload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
+                ComponentType type = *static_cast<const ComponentType*>(imguiPayload->Data);
+                circuitController.handle(AddComponentCommand{mousePos, type});
+            }
 
-    if (ImGui::BeginDragDropTarget()) {
-        if (auto imguiPayload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
-            ComponentType type = *static_cast<const ComponentType*>(imguiPayload->Data);
-            std::cout << "dropped" << (int)type << std::endl;
+            ImGui::EndDragDropTarget();
         }
 
-        ImGui::EndDragDropTarget();
-    }
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+            wireTool.begin(mousePos);
+        }
 
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-        wireTool.begin(mousePos);
-    }
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            wireTool.update(mousePos);
+        }
 
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-        wireTool.update(mousePos);
-    }
-
-    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        wireTool.end();
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            wireTool.end();
+            circuitController.handle(AddWireCommand{wireTool.getOrigin(), wireTool.getDestination()});
+        }
     }
 
 
@@ -156,6 +159,12 @@ void UiService::drawPalette() {
     ImGui::End();
 }
 
+void UiService::drawTopology() {
+    ImGui::Begin("Topology");
+    ImGui::TextUnformatted(circuitController.circuitTopology().c_str());
+    ImGui::End();
+}
+
 float UiService::computePixelScale() const {
     const sf::Vector2u framebufferSize = window.getSize();
     const sf::Vector2f logicalSize = window.getView().getSize();
@@ -176,5 +185,6 @@ void UiService::drawUI() {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
     drawPalette();
     drawCanvas();
+    drawTopology();
 }
 

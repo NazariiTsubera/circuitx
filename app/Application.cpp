@@ -26,11 +26,11 @@
 Application::Application()
     :
     window(sf::RenderWindow(sf::VideoMode::getDesktopMode(),"Circuitx", sf::Style::Titlebar | sf::Style::Default)),
-    clock(),
     assetManager("../res/"),
-    visualizer(assetManager),
+    visualizer(assetManager, gridSettings, circuitView),
     gridTool(gridSettings),
-    uiService(window, visualizer, assetManager, gridTool)
+    circuitController(circuitService, circuitView),
+    uiService(window, visualizer, assetManager, gridTool, circuitController)
 {
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
         sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);

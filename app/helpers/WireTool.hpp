@@ -5,6 +5,7 @@
 #ifndef WIRETOOL_H
 #define WIRETOOL_H
 #include "CoordinateTool.hpp"
+#include "../services/CircuitService.h"
 #include "SFML/System/Vector2.hpp"
 
 struct WirePreview {
@@ -33,6 +34,7 @@ public:
     sf::Vector2f getOrigin() { return origin; }
     sf::Vector2f getDestination() { return destination; }
     WirePreview getPreview() { return WirePreview(origin, destination); }
+    AddWireCommand getCommand() { return AddWireCommand(origin, destination); }
 };
 
 #endif //WIRETOOL_H

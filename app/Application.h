@@ -11,6 +11,7 @@
 #include "services/Visualizer.h"
 #include "SFML/Graphics/RenderWindow.hpp"
 #include "helpers/AssetManager.hpp"
+#include "services/CircuitController.h"
 
 struct AppContext;
 
@@ -18,11 +19,14 @@ class Application {
 private:
     sf::RenderWindow window;
     sf::Clock clock;
-    circuitx::Circuit circuit;
+
+    GridSettings gridSettings {20};
+    CircuitService circuitService;
     AssetManager assetManager;
+    CircuitView circuitView;
     Visualizer visualizer;
-    GridSettings gridSettings {30};
     CoordinateTool gridTool;
+    CircuitController circuitController;
     UiService uiService;
 public:
     Application();

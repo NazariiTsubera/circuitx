@@ -6,17 +6,14 @@
 #define UISERVICE_H
 #include <functional>
 
+#include "CircuitController.h"
+#include "CircuitService.h"
 #include "Visualizer.h"
 #include "SFML/Graphics/RenderTexture.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
+#include "CircuitService.h"
 
 
-enum class ComponentType {
-    Resistor = 0,
-    Capacitor = 1,
-    ISource = 2,
-    VSource = 3
-};
 
 struct PaletteComponent {
     ComponentType type;
@@ -34,11 +31,13 @@ private:
     std::vector<PaletteComponent> components;
     const CoordinateTool& gridTool;
     WireTool wireTool;
+    CircuitController& circuitController;
+
 
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
 public:
-    UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool);
+    UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController);
     ~UiService();
     void drawUI();
 
@@ -47,6 +46,7 @@ public:
 private:
     void drawCanvas();
     void drawPalette();
+    void drawTopology();
 
     float computePixelScale() const;
 };

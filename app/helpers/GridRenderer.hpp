@@ -7,16 +7,18 @@
 
 #include <SFML/Graphics.hpp>
 
+#include "CoordinateTool.hpp"
+
 struct GridRenderer {
     sf::VertexArray lines{sf::Lines};
     sf::Color major = {80, 80, 90, 255};
     sf::Color minor = {60, 60, 70, 180};
     float majorStep = 100.f;
-    int minorDivisions = 5;
+    int minorDivisions = 1;
 
 
 
-    void update(const sf::View& view) {
+    void update(const sf::View& view, const GridSettings& settings) {
         const sf::Vector2f center = view.getCenter();
         const sf::Vector2f size   = view.getSize();
         const float left   = center.x - size.x * 0.5f;
@@ -24,6 +26,7 @@ struct GridRenderer {
         const float top    = center.y - size.y * 0.5f;
         const float bottom = center.y + size.y * 0.5f;
 
+        majorStep = settings.spacing;
 
         lines.clear();
         const float minorStep = majorStep / minorDivisions;

@@ -15,6 +15,8 @@
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/System/Vector2.hpp>
+
+#include "CircuitView.h"
 #include "../helpers/GridRenderer.hpp"
 #include "../helpers/WireTool.hpp"
 
@@ -23,37 +25,22 @@
 
 class AssetManager;
 
-struct VisualNode {
-    unsigned int id;
-    sf::Vector2<float> position;
-};
-
-struct VisuaElement {
-    sf::Image image;
-    sf::Text label;
-};
-
-
-struct Layout {
-    std::vector<VisualNode> nodes;
-    std::vector<VisuaElement> elements;
-};
-
 struct VisualizerContext;
 
 class Visualizer {
 private:
-    Layout layout;
     std::vector<std::unique_ptr<sf::Drawable>> renderQueue;
     GridRenderer gridRenderer;
     const AssetManager& assetManager;
+    const CircuitView& circuitView;
+    GridSettings gridSettings;
 public:
-    Visualizer(const AssetManager& asset_manager);
-    Visualizer(const sf::View &view, const AssetManager& asset_manager);
+    Visualizer(const AssetManager& asset_manager, const GridSettings& grid_settings, const CircuitView& circuit_view);
+    Visualizer(const sf::View &view, const AssetManager& asset_manager, const GridSettings& grid_settings, const CircuitView& circuit_view);
     ~Visualizer();
 
     void update(const sf::View &view);
-    void build(circuitx::Circuit circuit);
+    void build(const CircuitView& circuit);
     void draw(sf::RenderTarget& target, std::optional<WirePreview> preview = std::nullopt) const;
 
 private:

@@ -89,7 +89,11 @@ add_executable(app
         app/services/CircuitService.cpp
         app/services/CircuitService.h
         app/helpers/WireTool.hpp
-        app/helpers/GridTool.hpp
+        app/helpers/CoordinateTool.hpp
+        app/services/CircuitView.cpp
+        app/services/CircuitView.h
+        app/services/CircuitController.cpp
+        app/services/CircuitController.h
 )
 
 add_library(circuitx STATIC
