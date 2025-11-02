@@ -21,6 +21,8 @@ private:
     circuitx::Circuit circuit;
     AssetManager assetManager;
     Visualizer visualizer;
+    GridSettings gridSettings {30};
+    CoordinateTool gridTool;
     UiService uiService;
 public:
     Application();

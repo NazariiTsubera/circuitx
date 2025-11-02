@@ -16,6 +16,7 @@
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/System/Vector2.hpp>
 #include "../helpers/GridRenderer.hpp"
+#include "../helpers/WireTool.hpp"
 
 #include "SFML/Graphics/CircleShape.hpp"
 
@@ -53,9 +54,10 @@ public:
 
     void update(const sf::View &view);
     void build(circuitx::Circuit circuit);
-    void draw(sf::RenderTarget& target) const;
+    void draw(sf::RenderTarget& target, std::optional<WirePreview> preview = std::nullopt) const;
 
 private:
+    void drawWire(sf::RenderTarget& target, const WirePreview& preview) const;
     void buildNodes(float r);
     void buildElements();
 };

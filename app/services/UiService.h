@@ -12,14 +12,15 @@
 
 
 enum class ComponentType {
-    Resistor,
-    Capacitor,
-    ISource,
-    VSource
+    Resistor = 0,
+    Capacitor = 1,
+    ISource = 2,
+    VSource = 3
 };
 
 struct PaletteComponent {
     ComponentType type;
+    std::string name;
     sf::Texture texture;
 };
 
@@ -31,11 +32,13 @@ private:
     AssetManager& assetManager;
     sf::Vector2f canvasSize;
     std::vector<PaletteComponent> components;
+    const CoordinateTool& gridTool;
+    WireTool wireTool;
 
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
 public:
-    UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager);
+    UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool);
     ~UiService();
     void drawUI();
 

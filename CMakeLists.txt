@@ -86,6 +86,10 @@ add_executable(app
         app/services/UiService.h
         app/helpers/GridRenderer.hpp
         app/helpers/AssetManager.hpp
+        app/services/CircuitService.cpp
+        app/services/CircuitService.h
+        app/helpers/WireTool.hpp
+        app/helpers/GridTool.hpp
 )
 
 add_library(circuitx STATIC

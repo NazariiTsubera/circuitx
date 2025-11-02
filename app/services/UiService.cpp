@@ -12,19 +12,20 @@
 #include "../helpers/AssetManager.hpp"
 
 
-UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager):
+UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool):
     window(window),
     visualizer(visualizer),
     assetManager(assetManager),
-    components()
+    gridTool(gridTool),
+    wireTool(gridTool)
 {
-    canvasTexture.create(window.getSize().x, window.getSize().y);
+
     const bool imguiInitialized = ImGui::SFML::Init(window);
 
-    components.push_back({ComponentType::Resistor, assetManager.getTexture("resistor")});
-    components.push_back({ComponentType::Capacitor, assetManager.getTexture("capacitor")});
-    components.push_back({ComponentType::ISource, assetManager.getTexture("isource")});
-    components.push_back({ComponentType::VSource, assetManager.getTexture("vsource")});
+    components.push_back({ComponentType::Resistor, "Resistor", assetManager.getTexture("resistor")});
+    components.push_back({ComponentType::Capacitor, "Capacitor", assetManager.getTexture("capacitor")});
+    components.push_back({ComponentType::ISource, "Current Source", assetManager.getTexture("isource")});
+    components.push_back({ComponentType::VSource,"Voltage Source", assetManager.getTexture("vsource")});
 
     if (!imguiInitialized) {
         throw std::runtime_error("Failed to initialize ImGui-SFML.");
@@ -62,20 +63,36 @@ void UiService::drawCanvas() {
 
     ImGui::Begin("Canvas");
 
+
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
     if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
         canvasSize = availableSize;
         canvasTexture.create(canvasSize.x, canvasSize.y);
 
+        sf::View view;
+        view.setSize(canvasSize.x, -canvasSize.y);
+        view.setCenter(canvasSize.x / 2, canvasSize.y / 2);
+
+        canvasTexture.setView(view);
+
         if (resizeCallback) {
             resizeCallback(canvasSize);
         }
     }
 
+
+
     canvasTexture.clear();
-    visualizer.draw(canvasTexture);
+    std::optional<WirePreview> preview;
+
+    if (wireTool.isActive()) {
+        preview = wireTool.getPreview();
+    }
+
+    visualizer.draw(canvasTexture, preview);
     canvasTexture.display();
+
 
     // in order to make button overlay
     ImVec2 screenPos = ImGui::GetCursorScreenPos();
@@ -85,9 +102,29 @@ void UiService::drawCanvas() {
     ImGui::PopStyleVar();
     ImGui::SetCursorScreenPos(screenPos);
 
+    // sf::Vector2f mousePos = gridTool.screenToWorld(ImGui::GetMousePos());
+
+    sf::Vector2 mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
+    if (ImGui::BeginDragDropTarget()) {
+        if (auto imguiPayload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
+            ComponentType type = *static_cast<const ComponentType*>(imguiPayload->Data);
+            std::cout << "dropped" << (int)type << std::endl;
+        }
+
+        ImGui::EndDragDropTarget();
+    }
+
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-        ImVec2 mousePos = ImGui::GetMousePos();
-        std::cout << mousePos.x << ", " << mousePos.y << std::endl;
+        wireTool.begin(mousePos);
+    }
+
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        wireTool.update(mousePos);
+    }
+
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        wireTool.end();
     }
 
 
@@ -105,6 +142,14 @@ void UiService::drawPalette() {
     for (auto& component : components) {
         ImGui::TableNextColumn();
         ImGui::ImageButton(component.texture, ImVec2(50, 50), 3, sf::Color::White);
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            std::cout << "Drag down" << std::endl;
+            ComponentType type = component.type;
+            ImGui::SetDragDropPayload("PALETTE_COMPONENT", &type, sizeof(ComponentType));
+            ImGui::TextUnformatted(component.name.c_str());
+            ImGui::EndDragDropSource();
+        }
     }
     ImGui::EndTable();
     ImGui::EndChild();

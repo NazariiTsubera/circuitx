@@ -7,13 +7,14 @@
 
 #include <SFML/Graphics.hpp>
 
-
 struct GridRenderer {
     sf::VertexArray lines{sf::Lines};
     sf::Color major = {80, 80, 90, 255};
     sf::Color minor = {60, 60, 70, 180};
     float majorStep = 100.f;
     int minorDivisions = 5;
+
+
 
     void update(const sf::View& view) {
         const sf::Vector2f center = view.getCenter();

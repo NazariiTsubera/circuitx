@@ -29,7 +29,8 @@ Application::Application()
     clock(),
     assetManager("../res/"),
     visualizer(assetManager),
-    uiService(window, visualizer, assetManager)
+    gridTool(gridSettings),
+    uiService(window, visualizer, assetManager, gridTool)
 {
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
         sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);
