@@ -19,11 +19,11 @@ private:
     sf::RenderWindow window;
     sf::Clock clock;
     GridSettings gridSettings {20};
+    CoordinateTool gridTool;
     CircuitService circuitService;
     CircuitView circuitView;
     CircuitController circuitController;
     AssetManager assetManager;
-    CoordinateTool gridTool;
     Visualizer visualizer;
     UiService uiService;
 public:

@@ -10,10 +10,17 @@
 #include <vector>
 
 #include "SFML/System/Vector2.hpp"
+#include "ComponentType.h"
 
 struct WireView {
     unsigned int startNode;
     unsigned int endNode;
+};
+
+struct ComponentView {
+    unsigned int id;
+    ComponentType type;
+    sf::Vector2f position;
 };
 
 class CircuitView {
@@ -23,6 +30,10 @@ public:
 
     void recordNode(unsigned int nodeId, sf::Vector2f position) {
         nodePositions[nodeId] = position;
+    }
+
+    void recordComponent(unsigned int componentId, ComponentType type, sf::Vector2f position) {
+        components[componentId] = ComponentView{componentId, type, position};
     }
 
     std::optional<sf::Vector2f> getNodePosition(unsigned int nodeId) const {
@@ -47,6 +58,7 @@ public:
 
     const std::unordered_map<unsigned int, sf::Vector2f>& getNodes() const { return nodePositions; }
     const std::vector<WireView>& getWires() const { return wires; }
+    const std::unordered_map<unsigned int, ComponentView>& getComponents() const { return components; }
 
 private:
     bool isInProximity(sf::Vector2f a, sf::Vector2f b) const {
@@ -59,6 +71,7 @@ private:
     float snapRadiusSquared;
     std::unordered_map<unsigned int, sf::Vector2f> nodePositions;
     std::vector<WireView> wires;
+    std::unordered_map<unsigned int, ComponentView> components;
 };
 
 

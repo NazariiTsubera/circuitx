@@ -7,12 +7,13 @@
 
 #include "CircuitService.h"
 #include "CircuitView.h"
+#include "../helpers/CoordinateTool.hpp"
 
 #include <string>
 
 class CircuitController {
 public:
-    CircuitController(CircuitService& service, CircuitView& view);
+    CircuitController(CircuitService& service, CircuitView& view, const CoordinateTool& gridTool);
 
     void handle(const CircuitCommand& command);
 
@@ -29,6 +30,7 @@ private:
 private:
     CircuitService& service;
     CircuitView& view;
+    const CoordinateTool& gridTool;
     std::string cachedTopology;
 };
 

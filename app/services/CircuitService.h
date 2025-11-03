@@ -8,14 +8,7 @@
 #include <variant>
 #include <string>
 #include "SFML/System/Vector2.hpp"
-
-
-enum class ComponentType {
-    Resistor = 0,
-    Capacitor = 1,
-    ISource = 2,
-    VSource = 3
-};
+#include "ComponentType.h"
 
 struct DeleteCommand { sf::Vector2f position; };
 struct AddComponentCommand { sf::Vector2f position; ComponentType type; };
@@ -40,6 +33,7 @@ public:
 private:
     circuitx::Circuit circuit;
     unsigned int nextNodeId;
+    unsigned int nextComponentId;
 };
 
 

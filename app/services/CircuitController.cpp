@@ -15,8 +15,8 @@ inline sf::Vector2f toVector(const sf::Vector2f& value) {
 }
 }
 
-CircuitController::CircuitController(CircuitService& service, CircuitView& view)
-    : service(service), view(view) {
+CircuitController::CircuitController(CircuitService& service, CircuitView& view, const CoordinateTool& gridTool)
+    : service(service), view(view), gridTool(gridTool) {
     cachedTopology = service.getCircuit().toJson().dump(2);
 }
 
@@ -37,8 +37,8 @@ void CircuitController::handle(const CircuitCommand& command) {
 }
 
 void CircuitController::handleWire(const AddWireCommand& command) {
-    auto startPos = toVector(command.start);
-    auto endPos = toVector(command.end);
+    auto startPos = gridTool.snapToGrid(toVector(command.start));
+    auto endPos = gridTool.snapToGrid(toVector(command.end));
 
     auto startNode = view.getNodeNear(startPos);
     if (!startNode) {
@@ -60,12 +60,24 @@ void CircuitController::handleWire(const AddWireCommand& command) {
 }
 
 void CircuitController::handleComponent(const AddComponentCommand& command) {
-    auto position = toVector(command.position);
+    auto basePosition = gridTool.snapToGrid(toVector(command.position));
+    const float spacing = static_cast<float>(gridTool.getSettings().spacing);
 
-    const auto nodeA = service.createNode();
-    const auto nodeB = service.createNode();
-    view.recordNode(nodeA, position);
-    view.recordNode(nodeB, position);
+    const sf::Vector2f leftTerminal = gridTool.snapToGrid({basePosition.x - spacing, basePosition.y});
+    const sf::Vector2f rightTerminal = gridTool.snapToGrid({basePosition.x + spacing, basePosition.y});
 
-    service.addComponent(command.type, nodeA, nodeB);
+    auto leftNodeId = view.getNodeNear(leftTerminal);
+    unsigned int nodeA = leftNodeId ? *leftNodeId : service.createNode();
+    if (!leftNodeId) {
+        view.recordNode(nodeA, leftTerminal);
+    }
+
+    auto rightNodeId = view.getNodeNear(rightTerminal);
+    unsigned int nodeB = rightNodeId ? *rightNodeId : service.createNode();
+    if (!rightNodeId) {
+        view.recordNode(nodeB, rightTerminal);
+    }
+
+    const auto componentId = service.addComponent(command.type, nodeA, nodeB);
+    view.recordComponent(componentId, command.type, basePosition);
 }

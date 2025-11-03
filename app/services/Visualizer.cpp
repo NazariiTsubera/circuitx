@@ -40,6 +40,10 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
         drawWire(target, *startOpt, *endOpt, sf::Color(80, 80, 90));
     }
 
+    for (const auto& [componentId, component] : circuitView.getComponents()) {
+        drawComponent(target, component);
+    }
+
     if (preview.has_value()) {
         drawPreviewWire(target, preview.value());
     }
@@ -92,4 +96,32 @@ void Visualizer::drawWire(sf::RenderTarget& target, sf::Vector2f start, sf::Vect
 
     target.draw(firstSegment);
     target.draw(secondSegment);
+}
+
+void Visualizer::drawComponent(sf::RenderTarget& target, const ComponentView& component) const {
+    sf::RectangleShape body;
+    body.setSize({32.f, 14.f});
+    body.setOrigin(body.getSize().x * 0.5f, body.getSize().y * 0.5f);
+    body.setPosition(component.position);
+
+    sf::Color fillColor;
+    switch (component.type) {
+        case ComponentType::Resistor:
+            fillColor = sf::Color(210, 180, 140);
+            break;
+        case ComponentType::Capacitor:
+            fillColor = sf::Color(100, 149, 237);
+            break;
+        case ComponentType::ISource:
+            fillColor = sf::Color(144, 238, 144);
+            break;
+        case ComponentType::VSource:
+            fillColor = sf::Color(255, 160, 122);
+            break;
+    }
+    body.setFillColor(fillColor);
+    body.setOutlineThickness(1.f);
+    body.setOutlineColor(sf::Color::Black);
+
+    target.draw(body);
 }

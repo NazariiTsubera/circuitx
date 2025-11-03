@@ -32,6 +32,7 @@ public:
 private:
     void drawPreviewWire(sf::RenderTarget& target, const WirePreview& preview) const;
     void drawWire(sf::RenderTarget& target, sf::Vector2f start, sf::Vector2f end, const sf::Color& color) const;
+    void drawComponent(sf::RenderTarget& target, const ComponentView& component) const;
 
 private:
     GridRenderer gridRenderer;

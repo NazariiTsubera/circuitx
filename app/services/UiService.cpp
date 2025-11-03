@@ -104,6 +104,7 @@ void UiService::drawCanvas() {
 
     // in order to make button overlay
     ImVec2 screenPos = ImGui::GetCursorScreenPos();
+    const sf::Vector2f canvasOrigin{screenPos.x, screenPos.y};
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
     ImGui::InvisibleButton("#inv_button", availableSize);
@@ -114,30 +115,35 @@ void UiService::drawCanvas() {
     {
         const ImVec2 mousePosIm = ImGui::GetMousePos();
         const sf::Vector2f mousePos = toVector(mousePosIm);
+        const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
 
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
                 const auto type = *static_cast<const ComponentType*>(payload->Data);
-                const sf::Vector2f snapped = gridTool.snapToGrid(mousePos);
+                const sf::Vector2f snapped = gridTool.snapToGrid(localMousePos);
                 circuitController.handle(AddComponentCommand{snapped, type});
             }
 
             ImGui::EndDragDropTarget();
         }
 
+        const bool canvasActive = ImGui::IsItemActive();
+
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            wireTool.begin(mousePos);
+            wireTool.begin(localMousePos);
         }
 
-        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            wireTool.update(mousePos);
+        if (canvasActive && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && wireTool.isActive()) {
+            wireTool.update(localMousePos);
         }
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            const sf::Vector2f origin = wireTool.getOrigin();
-            const sf::Vector2f destination = wireTool.getDestination();
-            wireTool.end();
-            circuitController.handle(AddWireCommand{origin, destination});
+            if (wireTool.isActive()) {
+                const sf::Vector2f origin = wireTool.getOrigin();
+                const sf::Vector2f destination = wireTool.getDestination();
+                wireTool.end();
+                circuitController.handle(AddWireCommand{origin, destination});
+            }
         }
     }
 
@@ -197,4 +203,3 @@ void UiService::drawUI() {
     drawCanvas();
     drawTopology();
 }
-

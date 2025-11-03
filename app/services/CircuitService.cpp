@@ -15,7 +15,7 @@ std::string makeNodeName(unsigned int id) {
 }
 
 CircuitService::CircuitService()
-    : circuit(), nextNodeId(1) {}
+    : circuit(), nextNodeId(1), nextComponentId(1) {}
 
 CircuitService::~CircuitService() = default;
 
@@ -41,5 +41,5 @@ unsigned int CircuitService::addComponent(ComponentType type, unsigned int nodeA
             break;
     }
 
-    return 0;
+    return nextComponentId++;
 }

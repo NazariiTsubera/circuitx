@@ -21,11 +21,11 @@ Application::Application()
     : window(sf::RenderWindow(sf::VideoMode::getDesktopMode(), "Circuitx", sf::Style::Titlebar | sf::Style::Default)),
       clock(),
       gridSettings{20},
+      gridTool(gridSettings),
       circuitService(),
       circuitView(),
-      circuitController(circuitService, circuitView),
+      circuitController(circuitService, circuitView, gridTool),
       assetManager("../res/"),
-      gridTool(gridSettings),
       visualizer(gridSettings, circuitView),
       uiService(window, visualizer, assetManager, gridTool, circuitController) {
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
