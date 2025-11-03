@@ -10,6 +10,7 @@
 #include "../helpers/CoordinateTool.hpp"
 
 #include <string>
+#include <vector>
 
 class CircuitController {
 public:
@@ -22,10 +23,15 @@ public:
 
     const CircuitService& getService() const { return service; }
     const std::string& getTopology() const { return cachedTopology; }
+    bool hasSelectableAt(sf::Vector2f position) const { return view.hasSelectableAt(position); }
 
 private:
     void handleWire(const AddWireCommand& command);
     void handleComponent(const AddComponentCommand& command);
+    void handleDelete(const DeleteCommand& command);
+
+    unsigned int ensureNodeAt(sf::Vector2f position);
+    void addWireSegments(const std::vector<std::pair<unsigned int, sf::Vector2f>>& orderedNodes);
 
 private:
     CircuitService& service;

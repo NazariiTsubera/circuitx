@@ -105,17 +105,56 @@ void UiService::drawCanvas() {
     // in order to make button overlay
     ImVec2 screenPos = ImGui::GetCursorScreenPos();
     const sf::Vector2f canvasOrigin{screenPos.x, screenPos.y};
+
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
     ImGui::InvisibleButton("#inv_button", availableSize);
     ImGui::PopStyleVar();
     ImGui::SetCursorScreenPos(screenPos);
 
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+        if (ImGui::BeginPopupContextItem("#canvas-context")) {
+            const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
+            ImGui::PushClipRect(screenPos, clipMax, true);
+            ImGui::TextUnformatted("Toolbox");
+
+            ImGui::PopClipRect();
+            ImGui::EndPopup();
+        }
+    }
+
     //Events
     {
         const ImVec2 mousePosIm = ImGui::GetMousePos();
         const sf::Vector2f mousePos = toVector(mousePosIm);
         const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
+
+        const bool selectableUnderCursor = circuitController.hasSelectableAt(localMousePos);
+
+        if (selectableUnderCursor) {
+            std::cout << "asd";
+            circuitController.hasSelectableAt(localMousePos);
+        }
+
+        if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            contextMenuPosition = gridTool.snapToGrid(localMousePos);
+            ImGui::OpenPopup("#canvas-context");
+        }
+
+        if (ImGui::BeginPopup("#canvas-context")) {
+            const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
+            ImGui::PushClipRect(screenPos, clipMax, true);
+            ImGui::TextUnformatted("Toolbox");
+            if (contextMenuPosition && ImGui::MenuItem("Delete")) {
+                circuitController.handle(DeleteCommand{*contextMenuPosition});
+                contextMenuPosition.reset();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopClipRect();
+            ImGui::EndPopup();
+        } else {
+            contextMenuPosition.reset();
+        }
 
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {

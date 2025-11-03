@@ -21,6 +21,7 @@ struct PaletteComponent {
     sf::Texture texture;
 };
 
+
 class UiService {
 private:
     sf::RenderWindow& window;
@@ -32,6 +33,7 @@ private:
     const CoordinateTool& gridTool;
     WireTool wireTool;
     CircuitController& circuitController;
+    std::optional<sf::Vector2f> contextMenuPosition;
 
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;

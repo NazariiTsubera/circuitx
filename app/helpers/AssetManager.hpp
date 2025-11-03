@@ -20,6 +20,7 @@ public:
         loadTexture("resistor", "resistor.png");
         loadTexture("isource", "isource.png");
         loadTexture("vsource", "vsource.png");
+        loadTexture("wire", "wire.png");
     }
     ~AssetManager() {}
 
