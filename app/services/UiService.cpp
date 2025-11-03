@@ -131,11 +131,6 @@ void UiService::drawCanvas() {
 
         const bool selectableUnderCursor = circuitController.hasSelectableAt(localMousePos);
 
-        if (selectableUnderCursor) {
-            std::cout << "asd";
-            circuitController.hasSelectableAt(localMousePos);
-        }
-
         if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
             contextMenuPosition = gridTool.snapToGrid(localMousePos);
             ImGui::OpenPopup("#canvas-context");

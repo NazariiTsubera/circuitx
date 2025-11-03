@@ -28,16 +28,20 @@ namespace circuitx {
                             {"a", component.a},
                             {"b", component.b},
                             {"value", component.vol}};
-                } else if constexpr (std::is_same_v<T, ISource>) {
-                    return {{"type", "current_source"},
-                            {"a", component.a},
-                            {"b", component.b},
-                            {"value", component.cur}};
-                } else {
-                    return {};
-                }
-            },
-            element);
+            } else if constexpr (std::is_same_v<T, ISource>) {
+                return {{"type", "current_source"},
+                        {"a", component.a},
+                        {"b", component.b},
+                        {"value", component.cur}};
+            } else if constexpr (std::is_same_v<T, Wire>) {
+                return {{"type", "wire"},
+                        {"a", component.a},
+                        {"b", component.b}};
+            } else {
+                return {};
+            }
+        },
+        element);
     }
 
 

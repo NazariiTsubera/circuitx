@@ -32,6 +32,7 @@ private:
 
     unsigned int ensureNodeAt(sf::Vector2f position);
     void addWireSegments(const std::vector<std::pair<unsigned int, sf::Vector2f>>& orderedNodes);
+    void cleanupNode(unsigned int nodeId);
 
 private:
     CircuitService& service;

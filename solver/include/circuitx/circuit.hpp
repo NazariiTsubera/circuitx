@@ -20,8 +20,9 @@ namespace circuitx {
     struct Cap { unsigned int a; unsigned int b; float cap; };
     struct VSource { unsigned int a; unsigned int b; float vol; };
     struct ISource { unsigned int a; unsigned int b; float cur; };
+    struct Wire { unsigned int a; unsigned int b; };
 
-    typedef std::variant<Res, Cap, VSource, ISource> Element;
+    typedef std::variant<Res, Cap, VSource, ISource, Wire> Element;
 
     class Circuit {
     public:
@@ -33,6 +34,8 @@ namespace circuitx {
 
         [[nodiscard]] std::vector<Element> getElements() const { return elements; }
         [[nodiscard]] std::vector<Node> getNodes() const { return nodes; }
+        std::vector<Element>& elementsMutable() { return elements; }
+        std::vector<Node>& nodesMutable() { return nodes; }
         [[nodiscard]] nlohmann::json toJson() const;
     private:
         std::vector<Node> nodes;

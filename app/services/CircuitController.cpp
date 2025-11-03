@@ -10,7 +10,6 @@
 
 #include <nlohmann/json.hpp>
 
-namespace {
 inline sf::Vector2f toVector(const sf::Vector2f& value) {
     return value;
 }
@@ -68,8 +67,6 @@ float computePathParameter(sf::Vector2f point, sf::Vector2f start, sf::Vector2f 
     }
     return firstLength + std::abs(point.x - elbow.x);
 }
-
-} // namespace
 
 CircuitController::CircuitController(CircuitService& service, CircuitView& view, const CoordinateTool& gridTool)
     : service(service), view(view), gridTool(gridTool) {
@@ -195,9 +192,14 @@ void CircuitController::handleWire(const AddWireCommand& command) {
     });
 
     for (const WireSplit& split : splits) {
+        service.removeComponent(ComponentType::Wire, split.startNode, split.endNode);
         view.removeWireAt(split.index);
-        view.recordWire(split.startNode, split.junctionNode);
-        view.recordWire(split.junctionNode, split.endNode);
+        const sf::Vector2f firstMid = (*view.getNodePosition(split.startNode) + *view.getNodePosition(split.junctionNode)) * 0.5f;
+        const sf::Vector2f secondMid = (*view.getNodePosition(split.junctionNode) + *view.getNodePosition(split.endNode)) * 0.5f;
+        const auto firstId = service.addComponent(ComponentType::Wire, split.startNode, split.junctionNode);
+        view.recordComponent(firstId, ComponentType::Wire, firstMid, split.startNode, split.junctionNode);
+        const auto secondId = service.addComponent(ComponentType::Wire, split.junctionNode, split.endNode);
+        view.recordComponent(secondId, ComponentType::Wire, secondMid, split.junctionNode, split.endNode);
     }
 
     std::vector<std::pair<unsigned int, sf::Vector2f>> ordered;
@@ -220,14 +222,23 @@ void CircuitController::handleComponent(const AddComponentCommand& command) {
     const unsigned int nodeB = ensureNodeAt(rightTerminal);
 
     const auto componentId = service.addComponent(command.type, nodeA, nodeB);
-    view.recordComponent(componentId, command.type, basePosition);
+    view.recordComponent(componentId, command.type, basePosition, nodeA, nodeB);
 }
 
 void CircuitController::handleDelete(const DeleteCommand& command) {
-    if (view.removeComponentAt(command.position)) {
+    const sf::Vector2f snapped = gridTool.snapToGrid(toVector(command.position));
+    if (auto component = view.removeComponentAt(snapped)) {
+        service.removeComponent(component->type, component->nodeA, component->nodeB);
+        cleanupNode(component->nodeA);
+        cleanupNode(component->nodeB);
         return;
     }
-    view.removeWireAtPosition(command.position);
+
+    if (auto wire = view.removeWireAtPosition(snapped)) {
+        service.removeComponent(ComponentType::Wire, wire->startNode, wire->endNode);
+        cleanupNode(wire->startNode);
+        cleanupNode(wire->endNode);
+    }
 }
 
 unsigned int CircuitController::ensureNodeAt(sf::Vector2f position) {
@@ -250,8 +261,21 @@ void CircuitController::addWireSegments(const std::vector<std::pair<unsigned int
     for (std::size_t i = 1; i < orderedNodes.size(); ++i) {
         const unsigned int currentNode = orderedNodes[i].first;
         if (currentNode != prevNode) {
-            view.recordWire(prevNode, currentNode);
+            const auto firstPos = view.getNodePosition(prevNode);
+            const auto secondPos = view.getNodePosition(currentNode);
+            if (firstPos && secondPos) {
+                const sf::Vector2f mid = (*firstPos + *secondPos) * 0.5f;
+                const auto wireId = service.addComponent(ComponentType::Wire, prevNode, currentNode);
+                view.recordComponent(wireId, ComponentType::Wire, mid, prevNode, currentNode);
+            }
         }
         prevNode = currentNode;
+    }
+}
+
+void CircuitController::cleanupNode(unsigned int nodeId) {
+    if (!view.isNodeUsed(nodeId)) {
+        view.removeNode(nodeId);
+        service.removeNode(nodeId);
     }
 }

@@ -13,15 +13,17 @@
 #include "SFML/System/Vector2.hpp"
 #include "ComponentType.h"
 
-struct WireView {
-    unsigned int startNode;
-    unsigned int endNode;
-};
-
 struct ComponentView {
     unsigned int id;
     ComponentType type;
     sf::Vector2f position;
+    unsigned int nodeA;
+    unsigned int nodeB;
+};
+
+struct WireView {
+    unsigned int startNode;
+    unsigned int endNode;
 };
 
 class CircuitView {
@@ -33,8 +35,12 @@ public:
         nodePositions[nodeId] = position;
     }
 
-    void recordComponent(unsigned int componentId, ComponentType type, sf::Vector2f position) {
-        components[componentId] = ComponentView{componentId, type, position};
+    void recordComponent(unsigned int componentId, ComponentType type, sf::Vector2f position, unsigned int nodeA, unsigned int nodeB) {
+        if (type == ComponentType::Wire) {
+            wires.push_back({nodeA, nodeB});
+            return;
+        }
+        components[componentId] = ComponentView{componentId, type, position, nodeA, nodeB};
     }
 
     std::optional<sf::Vector2f> getNodePosition(unsigned int nodeId) const {
@@ -53,22 +59,19 @@ public:
         return std::nullopt;
     }
 
-    void recordWire(unsigned int startNode, unsigned int endNode) {
-        wires.push_back({startNode, endNode});
-    }
-
     void removeWireAt(std::size_t index) {
         if (index < wires.size()) {
             wires.erase(wires.begin() + static_cast<std::ptrdiff_t>(index));
         }
     }
 
-    bool removeWireAtPosition(sf::Vector2f position, float tolerance = 6.f) {
+    std::optional<WireView> removeWireAtPosition(sf::Vector2f position, float tolerance = 6.f) {
         if (auto index = getWireIndexAt(position, tolerance)) {
+            WireView removed = wires[*index];
             wires.erase(wires.begin() + static_cast<std::ptrdiff_t>(*index));
-            return true;
+            return removed;
         }
-        return false;
+        return std::nullopt;
     }
 
 
@@ -82,21 +85,19 @@ public:
         return hasComponentAt(position) || getWireIndexAt(position).has_value();
     }
 
-    bool removeComponentAt(sf::Vector2f position, float tolerance = 6.f) {
-
-
+    std::optional<ComponentView> removeComponentAt(sf::Vector2f position, float tolerance = 6.f) {
         const sf::Vector2f halfSize{16.f, 7.f};
         for (auto it = components.begin(); it != components.end(); ++it) {
             const sf::Vector2f delta{position.x - it->second.position.x, position.y - it->second.position.y};
             if (std::abs(delta.x) <= halfSize.x + tolerance && std::abs(delta.y) <= halfSize.y + tolerance) {
+                ComponentView removed = it->second;
                 components.erase(it);
-                return true;
+                return removed;
             }
         }
-        return false;
+        return std::nullopt;
     }
 
-private:
     static bool pointNearSegment(sf::Vector2f p, sf::Vector2f a, sf::Vector2f b, float tolerance) {
         const float minX = std::min(a.x, b.x) - tolerance;
         const float maxX = std::max(a.x, b.x) + tolerance;
@@ -164,25 +165,28 @@ private:
     }
 
     bool hasWireAt(sf::Vector2f position, float tolerance = 6.f) const {
-        for (const auto& wire : wires) {
-            auto startIt = nodePositions.find(wire.startNode);
-            auto endIt = nodePositions.find(wire.endNode);
-            if (startIt == nodePositions.end() || endIt == nodePositions.end()) {
-                continue;
-            }
-            const sf::Vector2f start = startIt->second;
-            const sf::Vector2f end = endIt->second;
-            const sf::Vector2f delta = {end.x - start.x, end.y - start.y};
-            const bool horizontalFirst = std::abs(delta.x) >= std::abs(delta.y);
-            const sf::Vector2f elbow = horizontalFirst ? sf::Vector2f(end.x, start.y) : sf::Vector2f(start.x, end.y);
+        return getWireIndexAt(position, tolerance).has_value();
+    }
 
-            if (pointNearSegment(position, start, elbow, tolerance) || pointNearSegment(position, elbow, end, tolerance)) {
+    bool isNodeUsed(unsigned int nodeId) const {
+        for (const auto& wire : wires) {
+            if (wire.startNode == nodeId || wire.endNode == nodeId) {
+                return true;
+            }
+        }
+        for (const auto& [id, component] : components) {
+            if (component.nodeA == nodeId || component.nodeB == nodeId) {
                 return true;
             }
         }
         return false;
     }
 
+    void removeNode(unsigned int nodeId) {
+        nodePositions.erase(nodeId);
+    }
+
+private:
     bool isInProximity(sf::Vector2f a, sf::Vector2f b) const {
         const float dx = a.x - b.x;
         const float dy = a.y - b.y;

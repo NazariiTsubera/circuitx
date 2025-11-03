@@ -118,6 +118,8 @@ void Visualizer::drawComponent(sf::RenderTarget& target, const ComponentView& co
         case ComponentType::VSource:
             fillColor = sf::Color(255, 160, 122);
             break;
+        case ComponentType::Wire:
+            return;
     }
     body.setFillColor(fillColor);
     body.setOutlineThickness(1.f);

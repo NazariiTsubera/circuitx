@@ -4,14 +4,13 @@
 
 #include "CircuitService.h"
 
+#include <algorithm>
 #include <sstream>
 
-namespace {
 std::string makeNodeName(unsigned int id) {
     std::ostringstream oss;
     oss << "N" << id;
     return oss.str();
-}
 }
 
 CircuitService::CircuitService()
@@ -26,6 +25,10 @@ unsigned int CircuitService::createNode(const std::string& name) {
 }
 
 unsigned int CircuitService::addComponent(ComponentType type, unsigned int nodeA, unsigned int nodeB, float value) {
+    if (nodeA == nodeB) {
+        return 0;
+    }
+
     switch (type) {
         case ComponentType::Resistor:
             circuit.addElement(circuitx::Res{nodeA, nodeB, value});
@@ -39,7 +42,59 @@ unsigned int CircuitService::addComponent(ComponentType type, unsigned int nodeA
         case ComponentType::VSource:
             circuit.addElement(circuitx::VSource{nodeA, nodeB, value});
             break;
+        case ComponentType::Wire:
+            circuit.addElement(circuitx::Wire{nodeA, nodeB});
+            break;
     }
 
     return nextComponentId++;
+}
+
+void CircuitService::removeComponent(ComponentType type, unsigned int nodeA, unsigned int nodeB) {
+    auto& elements = circuit.elementsMutable();
+    elements.erase(std::remove_if(elements.begin(), elements.end(), [&](const circuitx::Element& elem) {
+                       switch (type) {
+                           case ComponentType::Resistor:
+                               if (const auto* res = std::get_if<circuitx::Res>(&elem)) {
+                                   return (res->a == nodeA && res->b == nodeB) || (res->a == nodeB && res->b == nodeA);
+                               }
+                               break;
+                           case ComponentType::Capacitor:
+                               if (const auto* cap = std::get_if<circuitx::Cap>(&elem)) {
+                                   return (cap->a == nodeA && cap->b == nodeB) || (cap->a == nodeB && cap->b == nodeA);
+                               }
+                               break;
+                           case ComponentType::ISource:
+                               if (const auto* isrc = std::get_if<circuitx::ISource>(&elem)) {
+                                   return (isrc->a == nodeA && isrc->b == nodeB) || (isrc->a == nodeB && isrc->b == nodeA);
+                               }
+                               break;
+                           case ComponentType::VSource:
+                               if (const auto* vsrc = std::get_if<circuitx::VSource>(&elem)) {
+                                   return (vsrc->a == nodeA && vsrc->b == nodeB) || (vsrc->a == nodeB && vsrc->b == nodeA);
+                               }
+                               break;
+                           case ComponentType::Wire:
+                               if (const auto* wire = std::get_if<circuitx::Wire>(&elem)) {
+                                   return (wire->a == nodeA && wire->b == nodeB) || (wire->a == nodeB && wire->b == nodeA);
+                               }
+                               break;
+                       }
+                       return false;
+                   }),
+        elements.end());
+}
+
+void CircuitService::removeNode(unsigned int nodeId) {
+    auto& elements = circuit.elementsMutable();
+    elements.erase(std::remove_if(elements.begin(), elements.end(), [&](const circuitx::Element& elem) {
+                       if (const auto* wire = std::get_if<circuitx::Wire>(&elem)) {
+                           return wire->a == nodeId || wire->b == nodeId;
+                       }
+                       return false;
+                   }),
+        elements.end());
+
+    auto& nodes = circuit.nodesMutable();
+    nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&](const circuitx::Node& node) { return node.id == nodeId; }), nodes.end());
 }

@@ -26,6 +26,8 @@ public:
 
     unsigned int createNode(const std::string& name = "");
     unsigned int addComponent(ComponentType type, unsigned int nodeA, unsigned int nodeB, float value = 1.0f);
+    void removeComponent(ComponentType type, unsigned int nodeA, unsigned int nodeB);
+    void removeNode(unsigned int nodeId);
 
     const circuitx::Circuit& getCircuit() const { return circuit; }
     circuitx::Circuit getCircuit() { return circuit; }
