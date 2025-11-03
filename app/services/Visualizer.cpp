@@ -4,89 +4,26 @@
 
 #include "Visualizer.h"
 
-#include <imgui.h>
+#include <cmath>
+#include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Vertex.hpp>
 
-#include "SFML/Graphics/CircleShape.hpp"
-#include "SFML/Graphics/RenderWindow.hpp"
+#include "SFML/Graphics/Color.hpp"
 
-Visualizer::Visualizer(const AssetManager& assetManager, const GridSettings& gridSettings, const CircuitView& circuitView)
-    :  renderQueue(), assetManager(assetManager), gridSettings(gridSettings), circuitView(circuitView)
-{}
+Visualizer::Visualizer(const GridSettings& gridSettings, const CircuitView& circuitView)
+    : gridRenderer(), gridSettings(gridSettings), circuitView(circuitView) {}
 
-Visualizer::Visualizer(const sf::View& view, const AssetManager& assetManager, const GridSettings& gridSettings, const CircuitView& circuitView)
-    : Visualizer(assetManager, gridSettings, circuitView )
-{
+Visualizer::Visualizer(const sf::View& view, const GridSettings& gridSettings, const CircuitView& circuitView)
+    : Visualizer(gridSettings, circuitView) {
     update(view);
 }
 
-Visualizer::~Visualizer() {}
+Visualizer::~Visualizer() = default;
 
-void Visualizer::update(const sf::View &view) {
+void Visualizer::update(const sf::View& view) {
     gridRenderer.update(view, gridSettings);
-}
-
-
-void Visualizer::buildNodes(float r) {
-
-}
-
-void Visualizer::buildElements() {
-
-}
-
-
-
-void Visualizer::build(const CircuitView& view) {
-    renderQueue.clear();
-
-    for (auto& node : view.getNodes()) {
-        auto circleNode = std::make_unique<sf::CircleShape>();
-        circleNode->setRadius(2.f);
-        circleNode->setOrigin(node.second);
-        renderQueue.emplace_back(std::move(circleNode));
-    }
-}
-
-void Visualizer::drawWire(sf::RenderTarget& target, const WirePreview& preview) const {
-
-    // sf::VertexArray horizontal(sf::Lines);
-    // horizontal.append(sf::Vertex(sf::Vector2f(preview.origin.x, preview.origin.y), sf::Color::Black));
-    // horizontal.append(sf::Vertex(sf::Vector2f(preview.destination.x, preview.origin.y), sf::Color::Black));
-
-    // sf::VertexArray vertical(sf::Lines);
-    // vertical.append(sf::Vertex(sf::Vector2f(preview.destination.x, preview.origin.y), sf::Color::Black));
-    // vertical.append(sf::Vertex(sf::Vector2f(preview.destination.x, preview.destination.y), sf::Color::Black));
-
-    auto delta = preview.destination - preview.origin;
-
-    sf::RectangleShape horizontal;
-    horizontal.setFillColor(sf::Color::Red);
-
-    sf::RectangleShape vertical;
-    vertical.setFillColor(sf::Color::Red);
-
-    if (std::abs(delta.x) > std::abs(delta.y)) {
-        horizontal.setPosition(sf::Vector2f(preview.origin.x, preview.origin.y));
-        horizontal.setSize(sf::Vector2f(preview.destination.x - preview.origin.x, 5.f));
-        vertical.setPosition(sf::Vector2f(preview.destination.x, preview.origin.y));
-        vertical.setSize(sf::Vector2f(5.f, preview.destination.y - preview.origin.y));
-    }
-    else {
-        vertical.setPosition(sf::Vector2f(preview.origin.x, preview.origin.y));
-        vertical.setSize(sf::Vector2f(5.f, preview.destination.y - preview.origin.y));
-
-        horizontal.setPosition(sf::Vector2f(preview.origin.x, preview.destination.y));
-        horizontal.setSize(sf::Vector2f(preview.destination.x - preview.origin.x, 5.f));
-    }
-
-
-
-
-    target.draw(vertical);
-    target.draw(horizontal);
-
-
 }
 
 void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> preview) const {
@@ -94,12 +31,65 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
 
     gridRenderer.draw(target, sf::RenderStates::Default);
 
-    if (preview.has_value()) {
-        drawWire(target, preview.value());
+    for (const auto& wire : circuitView.getWires()) {
+        const auto startOpt = circuitView.getNodePosition(wire.startNode);
+        const auto endOpt = circuitView.getNodePosition(wire.endNode);
+        if (!startOpt.has_value() || !endOpt.has_value()) {
+            continue;
+        }
+        drawWire(target, *startOpt, *endOpt, sf::Color(80, 80, 90));
     }
 
-    for (auto& drawable : renderQueue) {
-        target.draw(*drawable, sf::RenderStates::Default);
+    if (preview.has_value()) {
+        drawPreviewWire(target, preview.value());
+    }
+
+    for (const auto& [nodeId, position] : circuitView.getNodes()) {
+        sf::CircleShape circle;
+        circle.setRadius(4.f);
+        circle.setOrigin(circle.getRadius(), circle.getRadius());
+        circle.setFillColor(sf::Color(30, 144, 255));
+        circle.setPosition(position);
+        target.draw(circle);
     }
 }
 
+void Visualizer::drawPreviewWire(sf::RenderTarget& target, const WirePreview& preview) const {
+    drawWire(target, preview.origin, preview.destination, sf::Color::Red);
+}
+
+void Visualizer::drawWire(sf::RenderTarget& target, sf::Vector2f start, sf::Vector2f end, const sf::Color& color) const {
+    constexpr float thickness = 4.f;
+
+    const sf::Vector2f delta = end - start;
+    const bool horizontalFirst = std::abs(delta.x) >= std::abs(delta.y);
+    const sf::Vector2f elbow = horizontalFirst ? sf::Vector2f(end.x, start.y) : sf::Vector2f(start.x, end.y);
+
+    auto makeSegment = [&](sf::Vector2f a, sf::Vector2f b) {
+        sf::RectangleShape segment;
+        segment.setFillColor(color);
+
+        const float width = b.x - a.x;
+        const float height = b.y - a.y;
+
+        if (std::abs(width) >= std::abs(height)) {
+            const float length = std::abs(width);
+            segment.setSize({length, thickness});
+            segment.setOrigin(0.f, thickness * 0.5f);
+            segment.setPosition(width >= 0.f ? a : sf::Vector2f(b.x, a.y));
+        } else {
+            const float length = std::abs(height);
+            segment.setSize({thickness, length});
+            segment.setOrigin(thickness * 0.5f, 0.f);
+            segment.setPosition(height >= 0.f ? a : sf::Vector2f(a.x, b.y));
+        }
+
+        return segment;
+    };
+
+    sf::RectangleShape firstSegment = makeSegment(start, elbow);
+    sf::RectangleShape secondSegment = makeSegment(elbow, end);
+
+    target.draw(firstSegment);
+    target.draw(secondSegment);
+}

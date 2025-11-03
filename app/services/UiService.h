@@ -5,15 +5,15 @@
 #ifndef UISERVICE_H
 #define UISERVICE_H
 #include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "CircuitController.h"
-#include "CircuitService.h"
 #include "Visualizer.h"
+#include "../helpers/AssetManager.hpp"
 #include "SFML/Graphics/RenderTexture.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
-#include "CircuitService.h"
-
-
 
 struct PaletteComponent {
     ComponentType type;
@@ -32,7 +32,6 @@ private:
     const CoordinateTool& gridTool;
     WireTool wireTool;
     CircuitController& circuitController;
-
 
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;

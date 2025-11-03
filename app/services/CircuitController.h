@@ -4,24 +4,32 @@
 
 #ifndef CIRCUITCONTROLLER_H
 #define CIRCUITCONTROLLER_H
+
 #include "CircuitService.h"
 #include "CircuitView.h"
 
+#include <string>
 
 class CircuitController {
 public:
-    CircuitController(CircuitService& service, CircuitView &view);
-    ~CircuitController();
+    CircuitController(CircuitService& service, CircuitView& view);
 
-    const std::string& circuitTopology() const { return topology; }
+    void handle(const CircuitCommand& command);
 
-    void handle(const CircuitCommand& cmd);
+    CircuitView& getView() { return view; }
+    const CircuitView& getView() const { return view; }
+
+    const CircuitService& getService() const { return service; }
+    const std::string& getTopology() const { return cachedTopology; }
+
 private:
-    std::string topology;
+    void handleWire(const AddWireCommand& command);
+    void handleComponent(const AddComponentCommand& command);
+
+private:
     CircuitService& service;
     CircuitView& view;
+    std::string cachedTopology;
 };
-
-
 
 #endif //CIRCUITCONTROLLER_H

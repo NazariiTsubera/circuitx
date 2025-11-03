@@ -4,39 +4,42 @@
 
 #include "CircuitService.h"
 
-#include <iostream>
-#include <ostream>
-#include <nlohmann/json.hpp>
+#include <sstream>
 
-CircuitResult CircuitService::submit(CircuitCommand cmd) {
-    std::cout << "submitted" << std::endl;
-
-    if (std::holds_alternative<AddWireCommand>(cmd)) {
-        AddWireCommand addWireCommand = std::get<AddWireCommand>(cmd);
-
-        std::cout << "AddWireCommand" << std::endl;
-        circuit.addNode(circuitx::Node{nextId, "Node " + std::to_string(nextId)});
-        circuit.addNode(circuitx::Node{nextId, "Node " + std::to_string(nextId)});
-        nextId++;
-
-        return WireResult{};
-    }
-
-    if (std::holds_alternative<DeleteCommand>(cmd)) {
-        std::cout << "DeleteCommand" << std::endl;
-    }
-
-    if (std::holds_alternative<AddComponentCommand>(cmd)) {
-        std::cout << "AddComponentCommand" << std::endl;
-    }
-
-
-    return ErrorResult{"error"};
+namespace {
+std::string makeNodeName(unsigned int id) {
+    std::ostringstream oss;
+    oss << "N" << id;
+    return oss.str();
+}
 }
 
+CircuitService::CircuitService()
+    : circuit(), nextNodeId(1) {}
 
-CircuitService::CircuitService() : nextId(0) {
+CircuitService::~CircuitService() = default;
+
+unsigned int CircuitService::createNode(const std::string& name) {
+    const unsigned int id = nextNodeId++;
+    circuit.addNode({id, name.empty() ? makeNodeName(id) : name});
+    return id;
 }
 
-CircuitService::~CircuitService() {
+unsigned int CircuitService::addComponent(ComponentType type, unsigned int nodeA, unsigned int nodeB, float value) {
+    switch (type) {
+        case ComponentType::Resistor:
+            circuit.addElement(circuitx::Res{nodeA, nodeB, value});
+            break;
+        case ComponentType::Capacitor:
+            circuit.addElement(circuitx::Cap{nodeA, nodeB, value});
+            break;
+        case ComponentType::ISource:
+            circuit.addElement(circuitx::ISource{nodeA, nodeB, value});
+            break;
+        case ComponentType::VSource:
+            circuit.addElement(circuitx::VSource{nodeA, nodeB, value});
+            break;
+    }
+
+    return 0;
 }

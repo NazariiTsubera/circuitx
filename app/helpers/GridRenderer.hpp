@@ -5,6 +5,8 @@
 #ifndef GRIDRENDERER_H
 #define GRIDRENDERER_H
 
+#include <cmath>
+
 #include <SFML/Graphics.hpp>
 
 #include "CoordinateTool.hpp"

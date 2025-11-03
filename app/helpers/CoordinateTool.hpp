@@ -4,7 +4,8 @@
 
 #ifndef GRIDTOOL_H
 #define GRIDTOOL_H
-#include "SFML/Audio/InputSoundFile.hpp"
+#include <cmath>
+
 #include "SFML/System/Vector2.hpp"
 
 struct GridSettings {

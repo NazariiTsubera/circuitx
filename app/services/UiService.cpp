@@ -8,50 +8,57 @@
 #include <imgui.h>
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
+#include <optional>
 
 #include "../helpers/AssetManager.hpp"
 
+namespace {
+inline sf::Vector2f toVector(const ImVec2& value) {
+    return {value.x, value.y};
+}
+}
 
-UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController):
-    window(window),
-    visualizer(visualizer),
-    assetManager(assetManager),
-    gridTool(gridTool),
-    wireTool(gridTool),
-    circuitController(circuitController)
-{
+UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController)
+    : window(window),
+      canvasTexture(),
+      visualizer(visualizer),
+      assetManager(assetManager),
+      canvasSize(0.f, 0.f),
+      components(),
+      gridTool(gridTool),
+      wireTool(gridTool),
+      circuitController(circuitController) {
 
     const bool imguiInitialized = ImGui::SFML::Init(window);
 
     components.push_back({ComponentType::Resistor, "Resistor", assetManager.getTexture("resistor")});
     components.push_back({ComponentType::Capacitor, "Capacitor", assetManager.getTexture("capacitor")});
     components.push_back({ComponentType::ISource, "Current Source", assetManager.getTexture("isource")});
-    components.push_back({ComponentType::VSource,"Voltage Source", assetManager.getTexture("vsource")});
+    components.push_back({ComponentType::VSource, "Voltage Source", assetManager.getTexture("vsource")});
 
     if (!imguiInitialized) {
         throw std::runtime_error("Failed to initialize ImGui-SFML.");
     }
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 
     const float pixelScale = computePixelScale();
-    if (pixelScale <= 1.0f) {
-        return;
-    }
+    if (pixelScale > 1.0f) {
+        ImFontConfig fontConfig;
+        fontConfig.SizePixels = 13.0f * pixelScale;
 
-    ImFontConfig fontConfig;
-    fontConfig.SizePixels = 13.0f * pixelScale;
+        io.Fonts->Clear();
+        io.Fonts->AddFontDefault(&fontConfig);
+        io.DisplayFramebufferScale = ImVec2(pixelScale, pixelScale);
 
-    io.Fonts->Clear();
-    io.Fonts->AddFontDefault(&fontConfig);
-    io.DisplayFramebufferScale = ImVec2(pixelScale, pixelScale);
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.ScaleAllSizes(pixelScale);
 
-    ImGuiStyle &style = ImGui::GetStyle();
-    style.ScaleAllSizes(pixelScale);
-
-    if (!ImGui::SFML::UpdateFontTexture()) {
-        throw std::runtime_error("Failed to rebuild ImGui font texture for HiDPI scaling.");
+        if (!ImGui::SFML::UpdateFontTexture()) {
+            throw std::runtime_error("Failed to rebuild ImGui font texture for HiDPI scaling.");
+        }
     }
 }
 
@@ -68,12 +75,12 @@ void UiService::drawCanvas() {
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
     if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
-        canvasSize = availableSize;
-        canvasTexture.create(canvasSize.x, canvasSize.y);
+        canvasSize = {availableSize.x, availableSize.y};
+        canvasTexture.create(static_cast<unsigned int>(canvasSize.x), static_cast<unsigned int>(canvasSize.y));
 
         sf::View view;
         view.setSize(canvasSize.x, -canvasSize.y);
-        view.setCenter(canvasSize.x / 2, canvasSize.y / 2);
+        view.setCenter(canvasSize.x / 2.f, canvasSize.y / 2.f);
 
         canvasTexture.setView(view);
 
@@ -105,12 +112,14 @@ void UiService::drawCanvas() {
 
     //Events
     {
-        ImVec2 mousePos = ImGui::GetMousePos();
+        const ImVec2 mousePosIm = ImGui::GetMousePos();
+        const sf::Vector2f mousePos = toVector(mousePosIm);
 
         if (ImGui::BeginDragDropTarget()) {
-            if (auto imguiPayload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
-                ComponentType type = *static_cast<const ComponentType*>(imguiPayload->Data);
-                circuitController.handle(AddComponentCommand{mousePos, type});
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
+                const auto type = *static_cast<const ComponentType*>(payload->Data);
+                const sf::Vector2f snapped = gridTool.snapToGrid(mousePos);
+                circuitController.handle(AddComponentCommand{snapped, type});
             }
 
             ImGui::EndDragDropTarget();
@@ -125,8 +134,10 @@ void UiService::drawCanvas() {
         }
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            const sf::Vector2f origin = wireTool.getOrigin();
+            const sf::Vector2f destination = wireTool.getDestination();
             wireTool.end();
-            circuitController.handle(AddWireCommand{wireTool.getOrigin(), wireTool.getDestination()});
+            circuitController.handle(AddWireCommand{origin, destination});
         }
     }
 
@@ -139,7 +150,7 @@ void UiService::drawPalette() {
     ImGui::Begin("Palette");
 
     ImGui::BeginChild("#pallete_wrapper", ImVec2(0, 0), false,
-        ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
+                      ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
     ImGui::BeginTable("Table", 4);
 
     for (auto& component : components) {
@@ -147,7 +158,6 @@ void UiService::drawPalette() {
         ImGui::ImageButton(component.texture, ImVec2(50, 50), 3, sf::Color::White);
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-            std::cout << "Drag down" << std::endl;
             ComponentType type = component.type;
             ImGui::SetDragDropPayload("PALETTE_COMPONENT", &type, sizeof(ComponentType));
             ImGui::TextUnformatted(component.name.c_str());
@@ -161,7 +171,7 @@ void UiService::drawPalette() {
 
 void UiService::drawTopology() {
     ImGui::Begin("Topology");
-    ImGui::TextUnformatted(circuitController.circuitTopology().c_str());
+    ImGui::TextUnformatted(circuitController.getTopology().c_str());
     ImGui::End();
 }
 

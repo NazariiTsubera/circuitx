@@ -17,30 +17,24 @@
 
 #include <filesystem>
 
-#include "services/Visualizer.h"
-
-
-
-
-
 Application::Application()
-    :
-    window(sf::RenderWindow(sf::VideoMode::getDesktopMode(),"Circuitx", sf::Style::Titlebar | sf::Style::Default)),
-    assetManager("../res/"),
-    visualizer(assetManager, gridSettings, circuitView),
-    gridTool(gridSettings),
-    circuitController(circuitService, circuitView),
-    uiService(window, visualizer, assetManager, gridTool, circuitController)
-{
+    : window(sf::RenderWindow(sf::VideoMode::getDesktopMode(), "Circuitx", sf::Style::Titlebar | sf::Style::Default)),
+      clock(),
+      gridSettings{20},
+      circuitService(),
+      circuitView(),
+      circuitController(circuitService, circuitView),
+      assetManager("../res/"),
+      gridTool(gridSettings),
+      visualizer(gridSettings, circuitView),
+      uiService(window, visualizer, assetManager, gridTool, circuitController) {
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
         sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);
         visualizer.update(view);
     });
-
 }
 
-
-Application::~Application() {}
+Application::~Application() = default;
 
 
 

@@ -5,7 +5,7 @@
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 
-#include <queue>
+#include <optional>
 #include <vector>
 
 #include <circuitx/circuit.hpp>
@@ -16,39 +16,27 @@
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/System/Vector2.hpp>
 
-#include "CircuitView.h"
 #include "../helpers/GridRenderer.hpp"
 #include "../helpers/WireTool.hpp"
-
-#include "SFML/Graphics/CircleShape.hpp"
-
-
-class AssetManager;
-
-struct VisualizerContext;
+#include "CircuitView.h"
 
 class Visualizer {
-private:
-    std::vector<std::unique_ptr<sf::Drawable>> renderQueue;
-    GridRenderer gridRenderer;
-    const AssetManager& assetManager;
-    const CircuitView& circuitView;
-    GridSettings gridSettings;
 public:
-    Visualizer(const AssetManager& asset_manager, const GridSettings& grid_settings, const CircuitView& circuit_view);
-    Visualizer(const sf::View &view, const AssetManager& asset_manager, const GridSettings& grid_settings, const CircuitView& circuit_view);
+    Visualizer(const GridSettings& grid_settings, const CircuitView& circuit_view);
+    Visualizer(const sf::View& view, const GridSettings& grid_settings, const CircuitView& circuit_view);
     ~Visualizer();
 
-    void update(const sf::View &view);
-    void build(const CircuitView& circuit);
+    void update(const sf::View& view);
     void draw(sf::RenderTarget& target, std::optional<WirePreview> preview = std::nullopt) const;
 
 private:
-    void drawWire(sf::RenderTarget& target, const WirePreview& preview) const;
-    void buildNodes(float r);
-    void buildElements();
+    void drawPreviewWire(sf::RenderTarget& target, const WirePreview& preview) const;
+    void drawWire(sf::RenderTarget& target, sf::Vector2f start, sf::Vector2f end, const sf::Color& color) const;
+
+private:
+    GridRenderer gridRenderer;
+    GridSettings gridSettings;
+    const CircuitView& circuitView;
 };
-
-
 
 #endif //VISUALIZER_H
