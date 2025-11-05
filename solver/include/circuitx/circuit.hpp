@@ -9,6 +9,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <Eigen/Core>
 
 namespace circuitx {
     struct Node {
@@ -31,6 +32,9 @@ namespace circuitx {
 
         void addNode(const Node& n) { nodes.push_back(n); }
         void addElement(const Element& e) { elements.push_back(e); }
+
+        Eigen::VectorXd getVector();
+        Eigen::MatrixXd getMatrix();
 
         [[nodiscard]] std::vector<Element> getElements() const { return elements; }
         [[nodiscard]] std::vector<Node> getNodes() const { return nodes; }

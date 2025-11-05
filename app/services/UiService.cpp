@@ -19,16 +19,19 @@ inline sf::Vector2f toVector(const ImVec2& value) {
 }
 }
 
-UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController)
+UiService::UiService(
+        sf::RenderWindow& window, const Visualizer& visualizer,
+        AssetManager& assetManager, const CoordinateTool& gridTool,
+        CircuitController& circuitController, StateService& stateService)
     : window(window),
-      canvasTexture(),
       visualizer(visualizer),
       assetManager(assetManager),
       canvasSize(0.f, 0.f),
-      components(),
       gridTool(gridTool),
       wireTool(gridTool),
-      circuitController(circuitController) {
+      circuitController(circuitController),
+      stateService(stateService)
+{
 
     const bool imguiInitialized = ImGui::SFML::Init(window);
 
@@ -36,6 +39,11 @@ UiService::UiService(sf::RenderWindow& window, const Visualizer& visualizer, Ass
     components.push_back({ComponentType::Capacitor, "Capacitor", assetManager.getTexture("capacitor")});
     components.push_back({ComponentType::ISource, "Current Source", assetManager.getTexture("isource")});
     components.push_back({ComponentType::VSource, "Voltage Source", assetManager.getTexture("vsource")});
+
+    states.push_back({State::Edit, "Edit", assetManager.getTexture("edit")});
+    states.push_back({State::Play, "Play", assetManager.getTexture("play")});
+    states.push_back({State::Pause, "Pause", assetManager.getTexture("pause")});
+
 
     if (!imguiInitialized) {
         throw std::runtime_error("Failed to initialize ImGui-SFML.");
@@ -71,118 +79,121 @@ void UiService::drawCanvas() {
 
     ImGui::Begin("Canvas");
 
+    if (ImGui::BeginChild("canvas_child", ImVec2(0,0), ImGuiChildFlags_None,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        ImVec2 availableSize = ImGui::GetContentRegionAvail();
 
-    ImVec2 availableSize = ImGui::GetContentRegionAvail();
+        if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
+            canvasSize = {availableSize.x, availableSize.y};
+            canvasTexture.create(static_cast<unsigned int>(canvasSize.x), static_cast<unsigned int>(canvasSize.y));
 
-    if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
-        canvasSize = {availableSize.x, availableSize.y};
-        canvasTexture.create(static_cast<unsigned int>(canvasSize.x), static_cast<unsigned int>(canvasSize.y));
+            sf::View view;
+            view.setSize(canvasSize.x, -canvasSize.y);
+            view.setCenter(canvasSize.x / 2.f, canvasSize.y / 2.f);
 
-        sf::View view;
-        view.setSize(canvasSize.x, -canvasSize.y);
-        view.setCenter(canvasSize.x / 2.f, canvasSize.y / 2.f);
+            canvasTexture.setView(view);
 
-        canvasTexture.setView(view);
-
-        if (resizeCallback) {
-            resizeCallback(canvasSize);
-        }
-    }
-
-
-
-    canvasTexture.clear();
-    std::optional<WirePreview> preview;
-
-    if (wireTool.isActive()) {
-        preview = wireTool.getPreview();
-    }
-
-    visualizer.draw(canvasTexture, preview);
-    canvasTexture.display();
-
-
-    // in order to make button overlay
-    ImVec2 screenPos = ImGui::GetCursorScreenPos();
-    const sf::Vector2f canvasOrigin{screenPos.x, screenPos.y};
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-    ImGui::InvisibleButton("#inv_button", availableSize);
-    ImGui::PopStyleVar();
-    ImGui::SetCursorScreenPos(screenPos);
-
-    if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-        if (ImGui::BeginPopupContextItem("#canvas-context")) {
-            const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
-            ImGui::PushClipRect(screenPos, clipMax, true);
-            ImGui::TextUnformatted("Toolbox");
-
-            ImGui::PopClipRect();
-            ImGui::EndPopup();
-        }
-    }
-
-    //Events
-    {
-        const ImVec2 mousePosIm = ImGui::GetMousePos();
-        const sf::Vector2f mousePos = toVector(mousePosIm);
-        const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
-
-        const bool selectableUnderCursor = circuitController.hasSelectableAt(localMousePos);
-
-        if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-            contextMenuPosition = gridTool.snapToGrid(localMousePos);
-            ImGui::OpenPopup("#canvas-context");
+            if (resizeCallback) {
+                resizeCallback(canvasSize);
+            }
         }
 
-        if (ImGui::BeginPopup("#canvas-context")) {
-            const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
-            ImGui::PushClipRect(screenPos, clipMax, true);
-            ImGui::TextUnformatted("Toolbox");
-            if (contextMenuPosition && ImGui::MenuItem("Delete")) {
-                circuitController.handle(DeleteCommand{*contextMenuPosition});
+
+
+        canvasTexture.clear();
+        std::optional<WirePreview> preview;
+
+        if (wireTool.isActive()) {
+            preview = wireTool.getPreview();
+        }
+
+        visualizer.draw(canvasTexture, preview);
+        canvasTexture.display();
+
+
+        // in order to make button overlay
+        ImVec2 screenPos = ImGui::GetCursorScreenPos();
+        const sf::Vector2f canvasOrigin{screenPos.x, screenPos.y};
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        ImGui::InvisibleButton("#inv_button", availableSize);
+        ImGui::PopStyleVar();
+        ImGui::SetCursorScreenPos(screenPos);
+
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+            if (ImGui::BeginPopupContextItem("#canvas-context")) {
+                const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
+                ImGui::PushClipRect(screenPos, clipMax, true);
+                ImGui::TextUnformatted("Toolbox");
+
+                ImGui::PopClipRect();
+                ImGui::EndPopup();
+            }
+        }
+
+        //Events
+        {
+            const ImVec2 mousePosIm = ImGui::GetMousePos();
+            const sf::Vector2f mousePos = toVector(mousePosIm);
+            const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
+
+            const bool selectableUnderCursor = circuitController.hasSelectableAt(localMousePos);
+
+            if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                contextMenuPosition = gridTool.snapToGrid(localMousePos);
+                ImGui::OpenPopup("#canvas-context");
+            }
+
+            if (ImGui::BeginPopup("#canvas-context")) {
+                const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
+                ImGui::PushClipRect(screenPos, clipMax, true);
+                ImGui::TextUnformatted("Toolbox");
+                if (contextMenuPosition && ImGui::MenuItem("Delete")) {
+                    circuitController.handle(DeleteCommand{*contextMenuPosition});
+                    contextMenuPosition.reset();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::PopClipRect();
+                ImGui::EndPopup();
+            } else {
                 contextMenuPosition.reset();
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::PopClipRect();
-            ImGui::EndPopup();
-        } else {
-            contextMenuPosition.reset();
-        }
-
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
-                const auto type = *static_cast<const ComponentType*>(payload->Data);
-                const sf::Vector2f snapped = gridTool.snapToGrid(localMousePos);
-                circuitController.handle(AddComponentCommand{snapped, type});
             }
 
-            ImGui::EndDragDropTarget();
-        }
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
+                    const auto type = *static_cast<const ComponentType*>(payload->Data);
+                    const sf::Vector2f snapped = gridTool.snapToGrid(localMousePos);
+                    circuitController.handle(AddComponentCommand{snapped, type});
+                }
 
-        const bool canvasActive = ImGui::IsItemActive();
+                ImGui::EndDragDropTarget();
+            }
 
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            wireTool.begin(localMousePos);
-        }
+            const bool canvasActive = ImGui::IsItemActive();
 
-        if (canvasActive && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && wireTool.isActive()) {
-            wireTool.update(localMousePos);
-        }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                wireTool.begin(localMousePos);
+            }
 
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            if (wireTool.isActive()) {
-                const sf::Vector2f origin = wireTool.getOrigin();
-                const sf::Vector2f destination = wireTool.getDestination();
-                wireTool.end();
-                circuitController.handle(AddWireCommand{origin, destination});
+            if (canvasActive && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && wireTool.isActive()) {
+                wireTool.update(localMousePos);
+            }
+
+            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                if (wireTool.isActive()) {
+                    const sf::Vector2f origin = wireTool.getOrigin();
+                    const sf::Vector2f destination = wireTool.getDestination();
+                    wireTool.end();
+                    circuitController.handle(AddWireCommand{origin, destination});
+                }
             }
         }
+
+
+        ImGui::Image(canvasTexture.getTexture());
     }
-
-
-    ImGui::Image(canvasTexture.getTexture());
+    ImGui::EndChild();
     ImGui::End();
 }
 
@@ -208,6 +219,33 @@ void UiService::drawPalette() {
     ImGui::EndChild();
     ImGui::End();
 }
+
+void UiService::drawControlPanel() {
+    ImGui::Begin("Control panel");
+
+    ImGui::BeginChild("#control_wrapper", ImVec2(0, 0), false,
+                      ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    ImGui::BeginTable("#control_table", 10);
+
+
+    State currentState = stateService.getCurrentState();
+
+    for (auto& state : states) {
+        ImGui::TableNextColumn();
+
+        sf::Color color = (state.state == currentState) ? sf::Color::Cyan : sf::Color::White;
+
+        bool clicked = ImGui::ImageButton(state.texture, sf::Vector2f(50, 50), 3, color);
+
+        if (clicked) {
+            stateService.setCurrentState(state.state);
+        }
+    }
+    ImGui::EndTable();
+    ImGui::EndChild();
+    ImGui::End();
+}
+
 
 void UiService::drawTopology() {
     ImGui::Begin("Topology");
@@ -236,4 +274,5 @@ void UiService::drawUI() {
     drawPalette();
     drawCanvas();
     drawTopology();
+    drawControlPanel();
 }

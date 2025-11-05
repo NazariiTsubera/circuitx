@@ -59,4 +59,29 @@ namespace circuitx {
         return {{"nodes", std::move(nodesJson)}, {"elements", std::move(elementsJson)}};
     }
 
+    Eigen::VectorXd Circuit::getVector()
+    {
+        Eigen::VectorXd vector;
+
+        // for (const auto& element : elements) {
+        //     using T = std::decay_t<decltype(element)>;
+        //
+        //     if (std::is_same_v<T, VSource>) {
+        //         vector. std::get<VSource>(element).vol;
+        //     }
+        // }
+        //
+        // for (const auto& element : elements) {
+        //     using T = std::decay_t<decltype(element)>;
+        //
+        //     if (std::is_same_v<T, ISource>) {
+        //         vector += std::get<ISource>(element).cur;
+        //     }
+        // }
+
+        return vector;
+    }
+
+    Eigen::MatrixXd Circuit::getMatrix() {
+    }
 }

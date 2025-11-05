@@ -27,7 +27,12 @@ Application::Application()
       circuitController(circuitService, circuitView, gridTool),
       assetManager("../res/"),
       visualizer(gridSettings, circuitView),
-      uiService(window, visualizer, assetManager, gridTool, circuitController) {
+      uiService(window,
+                visualizer,
+                assetManager,
+                gridTool,
+                circuitController,
+                stateService) {
 
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
         sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);

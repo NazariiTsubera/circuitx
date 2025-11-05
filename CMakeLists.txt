@@ -94,6 +94,7 @@ add_executable(app
         app/services/CircuitView.h
         app/services/CircuitController.cpp
         app/services/CircuitController.h
+        app/services/StateService.h
 )
 
 add_library(circuitx STATIC

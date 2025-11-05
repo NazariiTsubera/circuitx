@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "CircuitController.h"
+#include "StateService.h"
 #include "Visualizer.h"
 #include "../helpers/AssetManager.hpp"
 #include "SFML/Graphics/RenderTexture.hpp"
@@ -17,6 +18,12 @@
 
 struct PaletteComponent {
     ComponentType type;
+    std::string name;
+    sf::Texture texture;
+};
+
+struct StateOptions {
+    State state;
     std::string name;
     sf::Texture texture;
 };
@@ -30,15 +37,18 @@ private:
     AssetManager& assetManager;
     sf::Vector2f canvasSize;
     std::vector<PaletteComponent> components;
+    std::vector<StateOptions> states;
     const CoordinateTool& gridTool;
     WireTool wireTool;
     CircuitController& circuitController;
     std::optional<sf::Vector2f> contextMenuPosition;
-
+    StateService& stateService;
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
 public:
-    UiService(sf::RenderWindow& window, const Visualizer& visualizer, AssetManager& assetManager, const CoordinateTool& gridTool, CircuitController& circuitController);
+    UiService(sf::RenderWindow& window, const Visualizer& visualizer,
+            AssetManager& assetManager, const CoordinateTool& gridTool,
+            CircuitController& circuitController, StateService& stateService);
     ~UiService();
     void drawUI();
 
@@ -48,6 +58,7 @@ private:
     void drawCanvas();
     void drawPalette();
     void drawTopology();
+    void drawControlPanel();
 
     float computePixelScale() const;
 };

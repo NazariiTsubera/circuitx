@@ -21,6 +21,9 @@ public:
         loadTexture("isource", "isource.png");
         loadTexture("vsource", "vsource.png");
         loadTexture("wire", "wire.png");
+        loadTexture("edit", "edit.png");
+        loadTexture("play", "play.png");
+        loadTexture("pause", "pause.png");
     }
     ~AssetManager() {}
 

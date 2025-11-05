@@ -26,6 +26,7 @@ private:
     AssetManager assetManager;
     Visualizer visualizer;
     UiService uiService;
+    StateService stateService;
 public:
     Application();
     ~Application();
