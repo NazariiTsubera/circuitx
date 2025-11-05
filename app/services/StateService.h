@@ -12,19 +12,30 @@ enum State {
     Edit
 };
 
+
 class StateService {
 private:
     State currentState;
+
+    std::vector<std::function<void(State, State)>> callbacks;
 public:
     StateService(State initial = State::Edit)
         : currentState(initial)
     {}
 
     void setCurrentState(State state) {
+        State oldState = currentState;
         currentState = state;
+        for (auto callback : callbacks) {
+            callback(oldState, currentState);
+        }
     }
 
     State getCurrentState() { return currentState; }
+
+    void addCallback(std::function<void(State, State)> callback) {
+        callbacks.push_back(callback);
+    }
 };
 
 

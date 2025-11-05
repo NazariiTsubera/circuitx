@@ -59,6 +59,7 @@ private:
     void drawPalette();
     void drawTopology();
     void drawControlPanel();
+    void drawSimulation();
 
     float computePixelScale() const;
 };

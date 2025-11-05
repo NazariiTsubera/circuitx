@@ -18,12 +18,9 @@
 #include <filesystem>
 
 Application::Application()
-    : window(sf::RenderWindow(sf::VideoMode::getDesktopMode(), "Circuitx", sf::Style::Titlebar | sf::Style::Default)),
-      clock(),
-      gridSettings{20},
+    :
+      window(sf::RenderWindow(sf::VideoMode::getDesktopMode(), "Circuitx", sf::Style::Titlebar | sf::Style::Default)),
       gridTool(gridSettings),
-      circuitService(),
-      circuitView(),
       circuitController(circuitService, circuitView, gridTool),
       assetManager("../res/"),
       visualizer(gridSettings, circuitView),
@@ -32,8 +29,12 @@ Application::Application()
                 assetManager,
                 gridTool,
                 circuitController,
-                stateService) {
-
+                stateService)
+{
+    stateService.addCallback([this](State prev, State next) {
+        if (next == State::Play)
+            circuitController.simulate();
+    });
     uiService.setResizeCallback([this](const sf::Vector2f& newSize) {
         sf::View view({newSize.x * 0.5f, newSize.y * 0.5f}, newSize);
         visualizer.update(view);

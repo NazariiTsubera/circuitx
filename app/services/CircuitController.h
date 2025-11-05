@@ -17,12 +17,14 @@ public:
     CircuitController(CircuitService& service, CircuitView& view, const CoordinateTool& gridTool);
 
     void handle(const CircuitCommand& command);
+    void simulate();
 
     CircuitView& getView() { return view; }
     const CircuitView& getView() const { return view; }
 
     const CircuitService& getService() const { return service; }
     const std::string& getTopology() const { return cachedTopology; }
+    const std::string& fetchSimulationResults() const { return cachedSimulation; }
     bool hasSelectableAt(sf::Vector2f position) const { return view.hasSelectableAt(position); }
 
 private:
@@ -34,11 +36,13 @@ private:
     void addWireSegments(const std::vector<std::pair<unsigned int, sf::Vector2f>>& orderedNodes);
     void cleanupNode(unsigned int nodeId);
 
+
 private:
     CircuitService& service;
     CircuitView& view;
     const CoordinateTool& gridTool;
     std::string cachedTopology;
+    std::string cachedSimulation;
 };
 
 #endif //CIRCUITCONTROLLER_H

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <type_traits>
 
 #include <nlohmann/json.hpp>
@@ -136,4 +137,11 @@ void CircuitController::cleanupNode(unsigned int nodeId) {
         view.removeNode(nodeId);
         service.removeNode(nodeId);
     }
+}
+
+
+//Bad design, i will redo later
+void CircuitController::simulate() {
+    circuitx::Circuit circuit = service.getCircuit();
+
 }

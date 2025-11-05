@@ -223,8 +223,7 @@ void UiService::drawPalette() {
 void UiService::drawControlPanel() {
     ImGui::Begin("Control panel");
 
-    ImGui::BeginChild("#control_wrapper", ImVec2(0, 0), false,
-                      ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    ImGui::BeginChild("#control_wrapper", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
     ImGui::BeginTable("#control_table", 10);
 
 
@@ -246,6 +245,16 @@ void UiService::drawControlPanel() {
     ImGui::End();
 }
 
+void UiService::drawSimulation() {
+    ImGui::Begin("Simulation");
+
+    ImGui::Text("Simulation Output : ");
+
+    ImGui::Text(circuitController.fetchSimulationResults().c_str());
+
+
+    ImGui::End();
+}
 
 void UiService::drawTopology() {
     ImGui::Begin("Topology");
@@ -275,4 +284,8 @@ void UiService::drawUI() {
     drawCanvas();
     drawTopology();
     drawControlPanel();
+
+    if (stateService.getCurrentState() == Play) {
+        drawSimulation();
+    }
 }
