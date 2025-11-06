@@ -8,6 +8,9 @@
 #include <cmath>
 #include <iostream>
 #include <type_traits>
+#include <unordered_map>
+#include <sstream>
+#include <Eigen/Core>
 
 #include <nlohmann/json.hpp>
 
@@ -143,5 +146,55 @@ void CircuitController::cleanupNode(unsigned int nodeId) {
 //Bad design, i will redo later
 void CircuitController::simulate() {
     circuitx::Circuit circuit = service.getCircuit();
+    cachedSimulation.clear();
 
+    const Eigen::VectorXd solution = circuit.solve();
+    const auto& nodeOrder = circuit.solutionNodeOrdering();
+    const auto& voltageOrder = circuit.solutionVoltageOrdering();
+    const auto groundId = circuit.solutionGround();
+
+    if (solution.size() == 0) {
+        cachedSimulation = "System has no unknowns (empty circuit).";
+        return;
+    }
+
+    std::unordered_map<unsigned int, std::string> nameById;
+    for (const auto& node : circuit.getNodes()) {
+        nameById[node.id] = node.name;
+    }
+
+    auto nameForNode = [&](unsigned int id) {
+        if (id == groundId) {
+            return std::string("GND");
+        }
+        if (auto it = nameById.find(id); it != nameById.end()) {
+            return it->second;
+        }
+        return std::string("N") + std::to_string(id);
+    };
+
+    std::ostringstream oss;
+    oss.setf(std::ios::fixed, std::ios::floatfield);
+    oss.precision(6);
+
+    oss << "Reference node: " << nameForNode(groundId) << " (ID " << groundId << ")\n";
+
+    for (std::size_t i = 0; i < nodeOrder.size(); ++i) {
+        const unsigned int nodeId = nodeOrder[i];
+        oss << "V(" << nameForNode(nodeId) << ") = " << solution(static_cast<Eigen::Index>(i)) << " V\n";
+    }
+
+    const auto elements = circuit.getElements();
+    for (std::size_t j = 0; j < voltageOrder.size(); ++j) {
+        const std::size_t elemIdx = voltageOrder[j];
+        if (elemIdx >= elements.size()) {
+            continue;
+        }
+        if (const auto* vsrc = std::get_if<circuitx::VSource>(&elements[elemIdx])) {
+            const double current = solution(static_cast<Eigen::Index>(nodeOrder.size() + j));
+            oss << "I(Vsrc " << nameForNode(vsrc->a) << "->" << nameForNode(vsrc->b) << ") = " << current << " A\n";
+        }
+    }
+
+    cachedSimulation = oss.str();
 }
