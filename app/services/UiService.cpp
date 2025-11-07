@@ -234,6 +234,9 @@ void UiService::drawCanvas() {
             if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (componentUnderCursor) {
                     selectedComponentId = componentUnderCursor->id;
+                    toolboxVisible = true;
+                } else {
+                    toolboxVisible = false;
                 }
                 contextMenuPosition = gridTool.snapToGrid(localMousePos);
                 contextMenuComponent = componentUnderCursor;
@@ -300,6 +303,9 @@ void UiService::drawCanvas() {
                     selectedComponentId = componentUnderCursor->id;
                 } else if (!wireUnderCursor) {
                     selectedComponentId.reset();
+                    toolboxVisible = false;
+                } else {
+                    toolboxVisible = false;
                 }
                 wireTool.begin(localMousePos);
             }
@@ -512,7 +518,21 @@ void UiService::drawPalette() {
 }
 
 void UiService::drawToolbox() {
-    ImGui::Begin("Toolbox");
+    if (!toolboxVisible) {
+        toolboxHovered = false;
+        return;
+    }
+
+    bool open = toolboxVisible;
+    if (!ImGui::Begin("Toolbox", &open)) {
+        toolboxHovered = false;
+        ImGui::End();
+        toolboxVisible = open;
+        return;
+    }
+
+    toolboxHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+                                            ImGuiHoveredFlags_ChildWindows);
 
     ImGui::Text("Placement orientation: %s", rotationStepsName(placementRotationSteps));
     if (ImGui::Button("Rotate placement CCW")) {
@@ -565,6 +585,7 @@ void UiService::drawToolbox() {
 
         if (ImGui::Button("Clear selection")) {
             selectedComponentId.reset();
+            toolboxVisible = false;
         }
     } else {
         ImGui::TextUnformatted("No component selected. Click a component on the canvas to select it.");
@@ -576,6 +597,10 @@ void UiService::drawToolbox() {
     }
 
     ImGui::End();
+    if (!selectedComponentId) {
+        open = false;
+    }
+    toolboxVisible = open;
 }
 
 void UiService::drawControlPanel() {
@@ -834,7 +859,11 @@ void UiService::drawUI() {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
     drawPalette();
     drawCanvas();
-    drawToolbox();
+    if (toolboxVisible) {
+        drawToolbox();
+    } else {
+        toolboxHovered = false;
+    }
     drawTopology();
     drawControlPanel();
 
@@ -842,4 +871,10 @@ void UiService::drawUI() {
         drawSimulation();
     }
     drawPropertiesWindow();
+
+    if (toolboxVisible &&
+        ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
+        !toolboxHovered) {
+        toolboxVisible = false;
+    }
 }

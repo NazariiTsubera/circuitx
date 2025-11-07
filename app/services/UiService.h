@@ -73,6 +73,8 @@ private:
     std::string propertiesStatus;
     std::string toolboxStatus;
     int placementRotationSteps = 0;
+    bool toolboxVisible = false;
+    bool toolboxHovered = false;
 };
 
 
