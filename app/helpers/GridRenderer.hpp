@@ -13,8 +13,8 @@
 
 struct GridRenderer {
     sf::VertexArray lines{sf::Lines};
-    sf::Color major = {130, 138, 156, 200};
-    sf::Color minor = {80, 86, 104, 140};
+    sf::Color major = {60, 66, 80, 200};
+    sf::Color minor = {38, 42, 54, 140};
     float majorStep = 100.f;
     int minorDivisions = 1;
 

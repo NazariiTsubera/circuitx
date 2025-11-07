@@ -13,7 +13,9 @@
 #include "SFML/Graphics/Color.hpp"
 
 Visualizer::Visualizer(const GridSettings& gridSettings, const CircuitView& circuitView)
-    : gridRenderer(), gridSettings(gridSettings), circuitView(circuitView) {}
+    : gridRenderer(), gridSettings(gridSettings), circuitView(circuitView) {
+    setTheme(VisualizerTheme::Dark);
+}
 
 Visualizer::Visualizer(const sf::View& view, const GridSettings& gridSettings, const CircuitView& circuitView)
     : Visualizer(gridSettings, circuitView) {
@@ -23,12 +25,13 @@ Visualizer::Visualizer(const sf::View& view, const GridSettings& gridSettings, c
 Visualizer::~Visualizer() = default;
 
 void Visualizer::update(const sf::View& view) {
+    cachedView = view;
+    hasCachedView = true;
     gridRenderer.update(view, gridSettings);
 }
 
 void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> preview) const {
-    static const sf::Color canvasBg{32, 34, 39};
-    target.clear(canvasBg);
+    target.clear(backgroundColor);
 
     gridRenderer.draw(target, sf::RenderStates::Default);
 
@@ -38,7 +41,7 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
         if (!startOpt.has_value() || !endOpt.has_value()) {
             continue;
         }
-        drawWire(target, *startOpt, *endOpt, sf::Color(170, 178, 195));
+        drawWire(target, *startOpt, *endOpt, wireColor);
     }
 
     for (const auto& [componentId, component] : circuitView.getComponents()) {
@@ -53,7 +56,7 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
         sf::CircleShape circle;
         circle.setRadius(4.f);
         circle.setOrigin(circle.getRadius(), circle.getRadius());
-        circle.setFillColor(sf::Color(207, 222, 255));
+        circle.setFillColor(nodeColor);
         circle.setPosition(position);
         target.draw(circle);
     }
@@ -108,25 +111,55 @@ void Visualizer::drawComponent(sf::RenderTarget& target, const ComponentView& co
     sf::Color fillColor;
     switch (component.type) {
         case ComponentType::Resistor:
-            fillColor = sf::Color(247, 186, 124);
+            fillColor = (currentTheme == VisualizerTheme::Dark)
+                        ? sf::Color(241, 168, 94)
+                        : sf::Color(210, 142, 74);
             break;
         case ComponentType::Capacitor:
-            fillColor = sf::Color(152, 205, 255);
+            fillColor = (currentTheme == VisualizerTheme::Dark)
+                        ? sf::Color(104, 169, 255)
+                        : sf::Color(68, 134, 230);
             break;
         case ComponentType::ISource:
-            fillColor = sf::Color(146, 234, 194);
+            fillColor = (currentTheme == VisualizerTheme::Dark)
+                        ? sf::Color(86, 210, 171)
+                        : sf::Color(58, 176, 136);
             break;
         case ComponentType::VSource:
-            fillColor = sf::Color(255, 168, 168);
+            fillColor = (currentTheme == VisualizerTheme::Dark)
+                        ? sf::Color(252, 120, 120)
+                        : sf::Color(235, 98, 98);
             break;
         case ComponentType::Wire:
             return;
     }
     body.setFillColor(fillColor);
     body.setOutlineThickness(1.4f);
-    body.setOutlineColor(sf::Color(30, 32, 38));
+    body.setOutlineColor(outlineColor);
 
     body.setRotation(rotationStepsToDegrees(component.rotationSteps));
 
     target.draw(body);
+}
+
+void Visualizer::setTheme(VisualizerTheme theme) {
+    currentTheme = theme;
+    if (theme == VisualizerTheme::Dark) {
+        backgroundColor = sf::Color(22, 24, 31);
+        wireColor = sf::Color(108, 115, 132);
+        nodeColor = sf::Color(93, 193, 255);
+        outlineColor = sf::Color(16, 18, 22);
+        gridRenderer.major = sf::Color(60, 66, 80, 200);
+        gridRenderer.minor = sf::Color(38, 42, 54, 140);
+    } else {
+        backgroundColor = sf::Color(247, 249, 253);
+        wireColor = sf::Color(140, 146, 160);
+        nodeColor = sf::Color(74, 117, 209);
+        outlineColor = sf::Color(214, 217, 224);
+        gridRenderer.major = sf::Color(207, 212, 224, 220);
+        gridRenderer.minor = sf::Color(227, 230, 238, 160);
+    }
+    if (hasCachedView) {
+        gridRenderer.update(cachedView, gridSettings);
+    }
 }

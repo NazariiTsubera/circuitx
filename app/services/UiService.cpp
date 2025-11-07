@@ -58,7 +58,7 @@ bool componentHasEditableValue(ComponentType type) {
     return type != ComponentType::Wire;
 }
 
-void applyMinimalistStyle() {
+void applyBlackStyle() {
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
     style.WindowRounding = 12.f;
@@ -77,38 +77,86 @@ void applyMinimalistStyle() {
     style.IndentSpacing = 18.f;
 
     ImVec4* colors = style.Colors;
-    colors[ImGuiCol_Text] = ImVec4(0.96f, 0.97f, 0.99f, 1.0f);
-    colors[ImGuiCol_TextDisabled] = ImVec4(0.75f, 0.78f, 0.85f, 1.0f);
-    colors[ImGuiCol_WindowBg] = ImVec4(0.16f, 0.17f, 0.19f, 0.98f);
-    colors[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.19f, 0.21f, 0.98f);
-    colors[ImGuiCol_FrameBg] = ImVec4(0.24f, 0.25f, 0.28f, 1.0f);
-    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.32f, 0.33f, 0.38f, 1.0f);
-    colors[ImGuiCol_FrameBgActive] = ImVec4(0.37f, 0.38f, 0.43f, 1.0f);
-    colors[ImGuiCol_TitleBg] = ImVec4(0.13f, 0.14f, 0.16f, 1.0f);
-    colors[ImGuiCol_TitleBgActive] = ImVec4(0.13f, 0.14f, 0.16f, 1.0f);
-    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.13f, 0.14f, 0.16f, 0.7f);
-    colors[ImGuiCol_Header] = ImVec4(0.30f, 0.32f, 0.36f, 1.0f);
-    colors[ImGuiCol_HeaderHovered] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
-    colors[ImGuiCol_HeaderActive] = ImVec4(0.41f, 0.43f, 0.48f, 1.0f);
-    colors[ImGuiCol_Button] = ImVec4(0.28f, 0.29f, 0.34f, 1.0f);
-    colors[ImGuiCol_ButtonHovered] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
-    colors[ImGuiCol_ButtonActive] = ImVec4(0.44f, 0.46f, 0.51f, 1.0f);
-    colors[ImGuiCol_Tab] = ImVec4(0.24f, 0.26f, 0.30f, 1.0f);
-    colors[ImGuiCol_TabHovered] = ImVec4(0.33f, 0.35f, 0.40f, 1.0f);
-    colors[ImGuiCol_TabActive] = ImVec4(0.30f, 0.32f, 0.36f, 1.0f);
-    colors[ImGuiCol_Separator] = ImVec4(0.36f, 0.37f, 0.41f, 1.0f);
-    colors[ImGuiCol_ResizeGrip] = ImVec4(0.48f, 0.50f, 0.55f, 0.0f);
-    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.48f, 0.50f, 0.55f, 0.6f);
-    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.48f, 0.50f, 0.55f, 0.9f);
-    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.14f, 0.15f, 0.17f, 0.5f);
-    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
-    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.44f, 0.46f, 0.51f, 1.0f);
-    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.50f, 0.52f, 0.57f, 1.0f);
+    colors[ImGuiCol_Text] = ImVec4(0.95f, 0.97f, 1.0f, 1.0f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.59f, 0.66f, 1.0f);
+    colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.11f, 0.14f, 0.98f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.12f, 0.13f, 0.17f, 0.98f);
+    colors[ImGuiCol_FrameBg] = ImVec4(0.17f, 0.19f, 0.24f, 1.0f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.24f, 0.27f, 0.33f, 1.0f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.30f, 0.35f, 0.42f, 1.0f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.07f, 0.13f, 0.24f, 1.0f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.09f, 0.19f, 0.34f, 1.0f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.07f, 0.13f, 0.24f, 0.8f);
+    colors[ImGuiCol_Header] = ImVec4(0.21f, 0.26f, 0.36f, 1.0f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.32f, 0.43f, 1.0f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.35f, 0.40f, 0.52f, 1.0f);
+    colors[ImGuiCol_Button] = ImVec4(0.21f, 0.25f, 0.33f, 1.0f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.31f, 0.36f, 0.46f, 1.0f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.40f, 0.46f, 0.57f, 1.0f);
+    colors[ImGuiCol_Tab] = ImVec4(0.16f, 0.20f, 0.27f, 1.0f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.24f, 0.28f, 0.36f, 1.0f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.28f, 0.33f, 0.42f, 1.0f);
+    colors[ImGuiCol_Separator] = ImVec4(0.32f, 0.38f, 0.50f, 1.0f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.28f, 0.36f, 0.50f, 0.0f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.28f, 0.36f, 0.50f, 0.6f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.28f, 0.36f, 0.50f, 0.9f);
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.09f, 0.10f, 0.13f, 0.6f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.28f, 0.32f, 0.40f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.36f, 0.40f, 0.50f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.44f, 0.49f, 0.60f, 1.0f);
+}
+
+void applyWhiteStyle() {
+    ImGui::StyleColorsLight();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 12.f;
+    style.FrameRounding = 8.f;
+    style.GrabRounding = 8.f;
+    style.TabRounding = 8.f;
+    style.ScrollbarRounding = 12.f;
+    style.ChildBorderSize = 0.f;
+    style.FrameBorderSize = 0.f;
+    style.WindowBorderSize = 0.f;
+    style.PopupBorderSize = 0.f;
+    style.WindowPadding = ImVec2(20.f, 20.f);
+    style.FramePadding = ImVec2(12.f, 8.f);
+    style.ItemSpacing = ImVec2(12.f, 10.f);
+    style.ItemInnerSpacing = ImVec2(8.f, 6.f);
+    style.IndentSpacing = 18.f;
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text] = ImVec4(0.12f, 0.14f, 0.22f, 1.0f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.48f, 0.51f, 0.60f, 1.0f);
+    colors[ImGuiCol_WindowBg] = ImVec4(0.97f, 0.98f, 1.0f, 1.0f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.99f, 0.99f, 1.0f, 1.0f);
+    colors[ImGuiCol_FrameBg] = ImVec4(0.92f, 0.94f, 0.98f, 1.0f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.86f, 0.89f, 0.96f, 1.0f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.80f, 0.85f, 0.94f, 1.0f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.84f, 0.88f, 0.95f, 1.0f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.77f, 0.83f, 0.94f, 1.0f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.85f, 0.89f, 0.95f, 0.85f);
+    colors[ImGuiCol_Header] = ImVec4(0.78f, 0.84f, 0.94f, 1.0f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.70f, 0.79f, 0.93f, 1.0f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.63f, 0.74f, 0.92f, 1.0f);
+    colors[ImGuiCol_Button] = ImVec4(0.90f, 0.93f, 0.98f, 1.0f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.78f, 0.85f, 0.96f, 1.0f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.69f, 0.79f, 0.94f, 1.0f);
+    colors[ImGuiCol_Tab] = ImVec4(0.90f, 0.93f, 0.97f, 1.0f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.78f, 0.84f, 0.94f, 1.0f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.82f, 0.87f, 0.95f, 1.0f);
+    colors[ImGuiCol_Separator] = ImVec4(0.74f, 0.79f, 0.88f, 1.0f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.66f, 0.75f, 0.92f, 0.0f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.66f, 0.75f, 0.92f, 0.6f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.66f, 0.75f, 0.92f, 0.9f);
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.94f, 0.96f, 0.99f, 0.7f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.75f, 0.81f, 0.92f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.67f, 0.75f, 0.89f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.60f, 0.70f, 0.87f, 1.0f);
 }
 }
 
 UiService::UiService(
-        sf::RenderWindow& window, const Visualizer& visualizer,
+        sf::RenderWindow& window, Visualizer& visualizer,
         AssetManager& assetManager, const CoordinateTool& gridTool,
         CircuitController& circuitController, StateService& stateService)
     : window(window),
@@ -139,7 +187,7 @@ UiService::UiService(
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
-    applyMinimalistStyle();
+    applyTheme(currentTheme);
 
     const float pixelScale = computePixelScale();
     if (pixelScale > 1.0f) {
@@ -161,6 +209,17 @@ UiService::UiService(
 
 UiService::~UiService() {
     ImGui::SFML::Shutdown();
+}
+
+void UiService::applyTheme(UiTheme theme) {
+    currentTheme = theme;
+    if (theme == UiTheme::Black) {
+        applyBlackStyle();
+        visualizer.setTheme(VisualizerTheme::Dark);
+    } else {
+        applyWhiteStyle();
+        visualizer.setTheme(VisualizerTheme::Light);
+    }
 }
 
 
@@ -338,6 +397,7 @@ void UiService::drawCanvas() {
             }
         }
         const bool showSimOverlays = simResult.solved && stateService.getCurrentState() != State::Edit;
+        const bool darkTheme = currentTheme == UiTheme::Black;
 
         auto formatValue = [] (double value) {
             std::ostringstream ss;
@@ -396,11 +456,16 @@ void UiService::drawCanvas() {
                 const ImVec2 padding{4.f, 2.f};
                 const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
                 const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
-                const ImU32 bgColor = highlightNode ? IM_COL32(120, 160, 205, 235) : IM_COL32(92, 96, 110, 230);
-                const ImU32 borderColor = highlightNode ? IM_COL32(200, 226, 255, 255) : IM_COL32(150, 156, 172, 230);
+                const ImU32 nodeBgHighlight = darkTheme ? IM_COL32(36, 66, 102, 235) : IM_COL32(214, 234, 255, 235);
+                const ImU32 nodeBgNormal = darkTheme ? IM_COL32(32, 36, 46, 230) : IM_COL32(255, 255, 255, 230);
+                const ImU32 nodeBorderHighlight = darkTheme ? IM_COL32(116, 170, 230, 255) : IM_COL32(150, 185, 232, 255);
+                const ImU32 nodeBorderNormal = darkTheme ? IM_COL32(70, 77, 95, 230) : IM_COL32(214, 218, 228, 230);
+                const ImU32 bgColor = highlightNode ? nodeBgHighlight : nodeBgNormal;
+                const ImU32 borderColor = highlightNode ? nodeBorderHighlight : nodeBorderNormal;
                 drawList->AddRectFilled(bgMin, bgMax, bgColor);
                 drawList->AddRect(bgMin, bgMax, borderColor);
-                drawList->AddText(textPos, IM_COL32(244, 247, 255, 255), nodeText.c_str());
+                const ImU32 nodeTextColor = darkTheme ? IM_COL32(245, 247, 255, 255) : IM_COL32(30, 34, 44, 255);
+                drawList->AddText(textPos, nodeTextColor, nodeText.c_str());
             }
         }
 
@@ -445,8 +510,12 @@ void UiService::drawCanvas() {
             const ImVec2 bgMin{textOrigin.x - padding.x, textOrigin.y - padding.y};
             const ImVec2 bgMax{textOrigin.x + blockSize.x + padding.x, textOrigin.y + blockSize.y + padding.y};
 
-            const ImU32 compBgColor = componentSelected ? IM_COL32(130, 168, 212, 235) : IM_COL32(100, 104, 118, 235);
-            const ImU32 compBorderColor = componentSelected ? IM_COL32(208, 232, 255, 230) : IM_COL32(158, 164, 182, 220);
+            const ImU32 compBgSelected = darkTheme ? IM_COL32(40, 75, 116, 235) : IM_COL32(220, 236, 255, 235);
+            const ImU32 compBgNormal = darkTheme ? IM_COL32(34, 38, 48, 235) : IM_COL32(250, 251, 253, 235);
+            const ImU32 compBorderSelected = darkTheme ? IM_COL32(138, 182, 233, 230) : IM_COL32(150, 182, 230, 230);
+            const ImU32 compBorderNormal = darkTheme ? IM_COL32(70, 76, 96, 220) : IM_COL32(210, 214, 226, 220);
+            const ImU32 compBgColor = componentSelected ? compBgSelected : compBgNormal;
+            const ImU32 compBorderColor = componentSelected ? compBorderSelected : compBorderNormal;
 
             drawList->AddRectFilled(bgMin, bgMax, compBgColor);
             drawList->AddRect(bgMin, bgMax, compBorderColor);
@@ -455,7 +524,8 @@ void UiService::drawCanvas() {
             for (std::size_t i = 0; i < lines.size(); ++i) {
                 const ImVec2 size = lineSizes[i];
                 const float cursorX = center.x - size.x * 0.5f;
-                drawList->AddText(ImVec2(cursorX, cursorY), IM_COL32(244, 247, 255, 255), lines[i].c_str());
+                const ImU32 compTextColor = darkTheme ? IM_COL32(245, 247, 255, 255) : IM_COL32(32, 36, 46, 255);
+                drawList->AddText(ImVec2(cursorX, cursorY), compTextColor, lines[i].c_str());
                 cursorY += size.y + lineSpacing;
             }
         }
@@ -483,9 +553,10 @@ void UiService::drawPalette() {
         const ImVec2 cursorAfter = ImGui::GetCursorPos();
         const bool hovered = ImGui::IsItemHovered();
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const ImU32 baseColor = IM_COL32(92, 96, 110, 255);
-        const ImU32 hoverColor = IM_COL32(116, 120, 136, 255);
-        const ImU32 borderColor = IM_COL32(160, 166, 184, 255);
+        const bool darkTheme = currentTheme == UiTheme::Black;
+        const ImU32 baseColor = darkTheme ? IM_COL32(48, 52, 66, 255) : IM_COL32(235, 237, 243, 255);
+        const ImU32 hoverColor = darkTheme ? IM_COL32(64, 70, 88, 255) : IM_COL32(223, 227, 238, 255);
+        const ImU32 borderColor = darkTheme ? IM_COL32(112, 122, 150, 255) : IM_COL32(194, 199, 213, 255);
         drawList->AddRectFilled(rectMin, rectMax, hovered ? hoverColor : baseColor, 20.f);
         drawList->AddRect(rectMin, rectMax, borderColor, 20.f, 0, 2.f);
 
@@ -503,7 +574,9 @@ void UiService::drawPalette() {
 
         ImGui::SetCursorScreenPos(ImVec2(rectMin.x + 14.f, rectMax.y - 44.f));
         ImGui::PushTextWrapPos(rectMax.x - 14.f);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.97f, 0.99f, 1.0f));
+        const ImVec4 tileTextColor = darkTheme ? ImVec4(0.94f, 0.97f, 1.0f, 1.0f)
+                                               : ImVec4(0.16f, 0.19f, 0.26f, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, tileTextColor);
         ImGui::TextUnformatted(component.name.c_str());
         ImGui::PopStyleColor();
         ImGui::PopTextWrapPos();
@@ -604,14 +677,26 @@ void UiService::drawToolbox() {
 }
 
 void UiService::drawControlPanel() {
-    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 190.f), ImVec2(FLT_MAX, 190.f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 220.f), ImVec2(FLT_MAX, 220.f));
     ImGui::Begin("Control panel");
 
+    ImGui::TextUnformatted("Theme");
+    if (ImGui::RadioButton("Dark", currentTheme == UiTheme::Black)) {
+        applyTheme(UiTheme::Black);
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Light", currentTheme == UiTheme::White)) {
+        applyTheme(UiTheme::White);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
     ImGui::TextUnformatted("Modes");
     ImGui::BeginChild("#control_wrapper", ImVec2(0, 130.f), false, ImGuiWindowFlags_NoScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.f, 0.f));
 
     State currentState = stateService.getCurrentState();
+    const bool darkTheme = currentTheme == UiTheme::Black;
     bool first = true;
     for (auto& state : states) {
         if (!first) {
@@ -630,9 +715,15 @@ void UiService::drawControlPanel() {
         const bool active = state.state == currentState;
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const ImU32 inactiveColor = hovered ? IM_COL32(120, 124, 138, 255) : IM_COL32(102, 106, 122, 255);
-        const ImU32 activeColor = hovered ? IM_COL32(140, 166, 205, 255) : IM_COL32(124, 150, 192, 255);
-        const ImU32 borderColor = active ? IM_COL32(198, 220, 255, 255) : IM_COL32(160, 168, 188, 255);
+        const ImU32 inactiveColor = darkTheme
+            ? (hovered ? IM_COL32(54, 59, 77, 255) : IM_COL32(44, 48, 63, 255))
+            : (hovered ? IM_COL32(226, 231, 241, 255) : IM_COL32(235, 238, 247, 255));
+        const ImU32 activeColor = darkTheme
+            ? (hovered ? IM_COL32(59, 90, 138, 255) : IM_COL32(48, 78, 122, 255))
+            : (hovered ? IM_COL32(208, 224, 250, 255) : IM_COL32(217, 230, 250, 255));
+        const ImU32 borderColor = active
+            ? (darkTheme ? IM_COL32(130, 176, 233, 255) : IM_COL32(155, 173, 213, 255))
+            : (darkTheme ? IM_COL32(90, 100, 126, 255) : IM_COL32(203, 209, 226, 255));
         drawList->AddRectFilled(rectMin, rectMax, active ? activeColor : inactiveColor, 20.f);
         drawList->AddRect(rectMin, rectMax, borderColor, 20.f, 0, 2.5f);
 
@@ -647,7 +738,9 @@ void UiService::drawControlPanel() {
 
         ImGui::SetCursorScreenPos(ImVec2(rectMin.x + 12.f, rectMax.y - 40.f));
         ImGui::PushTextWrapPos(rectMax.x - 12.f);
-        ImGui::PushStyleColor(ImGuiCol_Text, active ? ImVec4(0.98f, 0.99f, 1.0f, 1.0f) : ImVec4(0.90f, 0.93f, 0.98f, 1.0f));
+        const ImVec4 modeTextColor = darkTheme ? ImVec4(0.95f, 0.97f, 1.0f, 1.0f)
+                                               : ImVec4(0.10f, 0.13f, 0.20f, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, modeTextColor);
         ImGui::TextUnformatted(state.name.c_str());
         ImGui::PopStyleColor();
         ImGui::PopTextWrapPos();

@@ -12,6 +12,7 @@
 
 #include <SFML/Graphics/Image.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/View.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include <SFML/Graphics/VertexArray.hpp>
 #include <SFML/System/Vector2.hpp>
@@ -19,6 +20,11 @@
 #include "../helpers/GridRenderer.hpp"
 #include "../helpers/WireTool.hpp"
 #include "CircuitView.h"
+
+enum class VisualizerTheme {
+    Dark,
+    Light
+};
 
 class Visualizer {
 public:
@@ -28,6 +34,7 @@ public:
 
     void update(const sf::View& view);
     void draw(sf::RenderTarget& target, std::optional<WirePreview> preview = std::nullopt) const;
+    void setTheme(VisualizerTheme theme);
 
 private:
     void drawPreviewWire(sf::RenderTarget& target, const WirePreview& preview) const;
@@ -38,6 +45,13 @@ private:
     GridRenderer gridRenderer;
     GridSettings gridSettings;
     const CircuitView& circuitView;
+    VisualizerTheme currentTheme = VisualizerTheme::Dark;
+    sf::Color backgroundColor;
+    sf::Color wireColor;
+    sf::Color nodeColor;
+    sf::Color outlineColor;
+    sf::View cachedView;
+    bool hasCachedView = false;
 };
 
 #endif //VISUALIZER_H

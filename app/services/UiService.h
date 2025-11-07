@@ -16,6 +16,11 @@
 #include "SFML/Graphics/RenderTexture.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
 
+enum class UiTheme {
+    Black,
+    White
+};
+
 struct PaletteComponent {
     ComponentType type;
     std::string name;
@@ -33,7 +38,7 @@ class UiService {
 private:
     sf::RenderWindow& window;
     sf::RenderTexture canvasTexture;
-    const Visualizer& visualizer;
+    Visualizer& visualizer;
     AssetManager& assetManager;
     sf::Vector2f canvasSize;
     std::vector<PaletteComponent> components;
@@ -46,7 +51,7 @@ private:
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
 public:
-    UiService(sf::RenderWindow& window, const Visualizer& visualizer,
+    UiService(sf::RenderWindow& window, Visualizer& visualizer,
             AssetManager& assetManager, const CoordinateTool& gridTool,
             CircuitController& circuitController, StateService& stateService);
     ~UiService();
@@ -75,6 +80,9 @@ private:
     int placementRotationSteps = 0;
     bool toolboxVisible = false;
     bool toolboxHovered = false;
+    UiTheme currentTheme = UiTheme::Black;
+
+    void applyTheme(UiTheme theme);
 };
 
 
