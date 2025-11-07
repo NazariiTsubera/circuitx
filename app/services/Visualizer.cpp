@@ -27,7 +27,8 @@ void Visualizer::update(const sf::View& view) {
 }
 
 void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> preview) const {
-    target.clear(sf::Color::White);
+    static const sf::Color canvasBg{32, 34, 39};
+    target.clear(canvasBg);
 
     gridRenderer.draw(target, sf::RenderStates::Default);
 
@@ -37,7 +38,7 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
         if (!startOpt.has_value() || !endOpt.has_value()) {
             continue;
         }
-        drawWire(target, *startOpt, *endOpt, sf::Color(80, 80, 90));
+        drawWire(target, *startOpt, *endOpt, sf::Color(170, 178, 195));
     }
 
     for (const auto& [componentId, component] : circuitView.getComponents()) {
@@ -52,7 +53,7 @@ void Visualizer::draw(sf::RenderTarget& target, std::optional<WirePreview> previ
         sf::CircleShape circle;
         circle.setRadius(4.f);
         circle.setOrigin(circle.getRadius(), circle.getRadius());
-        circle.setFillColor(sf::Color(30, 144, 255));
+        circle.setFillColor(sf::Color(207, 222, 255));
         circle.setPosition(position);
         target.draw(circle);
     }
@@ -100,30 +101,30 @@ void Visualizer::drawWire(sf::RenderTarget& target, sf::Vector2f start, sf::Vect
 
 void Visualizer::drawComponent(sf::RenderTarget& target, const ComponentView& component) const {
     sf::RectangleShape body;
-    body.setSize({32.f, 14.f});
+    body.setSize({34.f, 14.f});
     body.setOrigin(body.getSize().x * 0.5f, body.getSize().y * 0.5f);
     body.setPosition(component.position);
 
     sf::Color fillColor;
     switch (component.type) {
         case ComponentType::Resistor:
-            fillColor = sf::Color(210, 180, 140);
+            fillColor = sf::Color(247, 186, 124);
             break;
         case ComponentType::Capacitor:
-            fillColor = sf::Color(100, 149, 237);
+            fillColor = sf::Color(152, 205, 255);
             break;
         case ComponentType::ISource:
-            fillColor = sf::Color(144, 238, 144);
+            fillColor = sf::Color(146, 234, 194);
             break;
         case ComponentType::VSource:
-            fillColor = sf::Color(255, 160, 122);
+            fillColor = sf::Color(255, 168, 168);
             break;
         case ComponentType::Wire:
             return;
     }
     body.setFillColor(fillColor);
-    body.setOutlineThickness(1.f);
-    body.setOutlineColor(sf::Color::Black);
+    body.setOutlineThickness(1.4f);
+    body.setOutlineColor(sf::Color(30, 32, 38));
 
     body.setRotation(rotationStepsToDegrees(component.rotationSteps));
 

@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <string>
 #include <sstream>
+#include <cfloat>
 
 #include "../helpers/AssetManager.hpp"
 
@@ -56,6 +57,54 @@ const char* componentValueLabel(ComponentType type) {
 bool componentHasEditableValue(ComponentType type) {
     return type != ComponentType::Wire;
 }
+
+void applyMinimalistStyle() {
+    ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 12.f;
+    style.FrameRounding = 8.f;
+    style.GrabRounding = 8.f;
+    style.TabRounding = 8.f;
+    style.ScrollbarRounding = 12.f;
+    style.ChildBorderSize = 0.f;
+    style.FrameBorderSize = 0.f;
+    style.WindowBorderSize = 0.f;
+    style.PopupBorderSize = 0.f;
+    style.WindowPadding = ImVec2(18.f, 18.f);
+    style.FramePadding = ImVec2(12.f, 8.f);
+    style.ItemSpacing = ImVec2(12.f, 10.f);
+    style.ItemInnerSpacing = ImVec2(8.f, 6.f);
+    style.IndentSpacing = 18.f;
+
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_Text] = ImVec4(0.96f, 0.97f, 0.99f, 1.0f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.75f, 0.78f, 0.85f, 1.0f);
+    colors[ImGuiCol_WindowBg] = ImVec4(0.16f, 0.17f, 0.19f, 0.98f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.19f, 0.21f, 0.98f);
+    colors[ImGuiCol_FrameBg] = ImVec4(0.24f, 0.25f, 0.28f, 1.0f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.32f, 0.33f, 0.38f, 1.0f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.37f, 0.38f, 0.43f, 1.0f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.13f, 0.14f, 0.16f, 1.0f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.13f, 0.14f, 0.16f, 1.0f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.13f, 0.14f, 0.16f, 0.7f);
+    colors[ImGuiCol_Header] = ImVec4(0.30f, 0.32f, 0.36f, 1.0f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.41f, 0.43f, 0.48f, 1.0f);
+    colors[ImGuiCol_Button] = ImVec4(0.28f, 0.29f, 0.34f, 1.0f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.44f, 0.46f, 0.51f, 1.0f);
+    colors[ImGuiCol_Tab] = ImVec4(0.24f, 0.26f, 0.30f, 1.0f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.33f, 0.35f, 0.40f, 1.0f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.30f, 0.32f, 0.36f, 1.0f);
+    colors[ImGuiCol_Separator] = ImVec4(0.36f, 0.37f, 0.41f, 1.0f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.48f, 0.50f, 0.55f, 0.0f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.48f, 0.50f, 0.55f, 0.6f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.48f, 0.50f, 0.55f, 0.9f);
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.14f, 0.15f, 0.17f, 0.5f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.36f, 0.38f, 0.43f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.44f, 0.46f, 0.51f, 1.0f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.50f, 0.52f, 0.57f, 1.0f);
+}
 }
 
 UiService::UiService(
@@ -90,6 +139,7 @@ UiService::UiService(
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+    applyMinimalistStyle();
 
     const float pixelScale = computePixelScale();
     if (pixelScale > 1.0f) {
@@ -340,11 +390,11 @@ void UiService::drawCanvas() {
                 const ImVec2 padding{4.f, 2.f};
                 const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
                 const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
-                const ImU32 bgColor = highlightNode ? IM_COL32(210, 235, 255, 235) : IM_COL32(245, 245, 245, 220);
-                const ImU32 borderColor = highlightNode ? IM_COL32(20, 120, 200, 230) : IM_COL32(60, 60, 60, 200);
+                const ImU32 bgColor = highlightNode ? IM_COL32(120, 160, 205, 235) : IM_COL32(92, 96, 110, 230);
+                const ImU32 borderColor = highlightNode ? IM_COL32(200, 226, 255, 255) : IM_COL32(150, 156, 172, 230);
                 drawList->AddRectFilled(bgMin, bgMax, bgColor);
                 drawList->AddRect(bgMin, bgMax, borderColor);
-                drawList->AddText(textPos, IM_COL32(20, 20, 20, 255), nodeText.c_str());
+                drawList->AddText(textPos, IM_COL32(244, 247, 255, 255), nodeText.c_str());
             }
         }
 
@@ -389,8 +439,8 @@ void UiService::drawCanvas() {
             const ImVec2 bgMin{textOrigin.x - padding.x, textOrigin.y - padding.y};
             const ImVec2 bgMax{textOrigin.x + blockSize.x + padding.x, textOrigin.y + blockSize.y + padding.y};
 
-            const ImU32 compBgColor = componentSelected ? IM_COL32(220, 245, 255, 230) : IM_COL32(255, 255, 255, 220);
-            const ImU32 compBorderColor = componentSelected ? IM_COL32(10, 110, 190, 230) : IM_COL32(60, 60, 60, 200);
+            const ImU32 compBgColor = componentSelected ? IM_COL32(130, 168, 212, 235) : IM_COL32(100, 104, 118, 235);
+            const ImU32 compBorderColor = componentSelected ? IM_COL32(208, 232, 255, 230) : IM_COL32(158, 164, 182, 220);
 
             drawList->AddRectFilled(bgMin, bgMax, compBgColor);
             drawList->AddRect(bgMin, bgMax, compBorderColor);
@@ -399,7 +449,7 @@ void UiService::drawCanvas() {
             for (std::size_t i = 0; i < lines.size(); ++i) {
                 const ImVec2 size = lineSizes[i];
                 const float cursorX = center.x - size.x * 0.5f;
-                drawList->AddText(ImVec2(cursorX, cursorY), IM_COL32(20, 20, 20, 255), lines[i].c_str());
+                drawList->AddText(ImVec2(cursorX, cursorY), IM_COL32(244, 247, 255, 255), lines[i].c_str());
                 cursorY += size.y + lineSpacing;
             }
         }
@@ -417,7 +467,21 @@ void UiService::drawPalette() {
 
     for (auto& component : components) {
         ImGui::TableNextColumn();
-        ImGui::ImageButton(component.texture, ImVec2(50, 50), 3, sf::Color::White);
+        ImGui::PushID(component.name.c_str());
+        ImGui::BeginGroup();
+
+        const ImVec2 tileSize{130.f, 150.f};
+        ImGui::InvisibleButton("##palette_tile", tileSize);
+        const ImVec2 rectMin = ImGui::GetItemRectMin();
+        const ImVec2 rectMax = ImGui::GetItemRectMax();
+        const ImVec2 cursorAfter = ImGui::GetCursorPos();
+        const bool hovered = ImGui::IsItemHovered();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImU32 baseColor = IM_COL32(92, 96, 110, 255);
+        const ImU32 hoverColor = IM_COL32(116, 120, 136, 255);
+        const ImU32 borderColor = IM_COL32(160, 166, 184, 255);
+        drawList->AddRectFilled(rectMin, rectMax, hovered ? hoverColor : baseColor, 20.f);
+        drawList->AddRect(rectMin, rectMax, borderColor, 20.f, 0, 2.f);
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             ComponentType type = component.type;
@@ -425,6 +489,22 @@ void UiService::drawPalette() {
             ImGui::TextUnformatted(component.name.c_str());
             ImGui::EndDragDropSource();
         }
+
+        const float imageSize = 64.f;
+        const ImVec2 imagePos{rectMin.x + (tileSize.x - imageSize) * 0.5f, rectMin.y + 18.f};
+        ImGui::SetCursorScreenPos(imagePos);
+        ImGui::Image(component.texture, sf::Vector2f(imageSize, imageSize));
+
+        ImGui::SetCursorScreenPos(ImVec2(rectMin.x + 14.f, rectMax.y - 44.f));
+        ImGui::PushTextWrapPos(rectMax.x - 14.f);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.96f, 0.97f, 0.99f, 1.0f));
+        ImGui::TextUnformatted(component.name.c_str());
+        ImGui::PopStyleColor();
+        ImGui::PopTextWrapPos();
+
+        ImGui::SetCursorPos(cursorAfter);
+        ImGui::EndGroup();
+        ImGui::PopID();
     }
     ImGui::EndTable();
     ImGui::EndChild();
@@ -499,26 +579,60 @@ void UiService::drawToolbox() {
 }
 
 void UiService::drawControlPanel() {
+    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 190.f), ImVec2(FLT_MAX, 190.f));
     ImGui::Begin("Control panel");
 
-    ImGui::BeginChild("#control_wrapper", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
-    ImGui::BeginTable("#control_table", 10);
-
+    ImGui::TextUnformatted("Modes");
+    ImGui::BeginChild("#control_wrapper", ImVec2(0, 130.f), false, ImGuiWindowFlags_NoScrollbar);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.f, 0.f));
 
     State currentState = stateService.getCurrentState();
-
+    bool first = true;
     for (auto& state : states) {
-        ImGui::TableNextColumn();
+        if (!first) {
+            ImGui::SameLine();
+        }
+        first = false;
 
-        sf::Color color = (state.state == currentState) ? sf::Color::Cyan : sf::Color::White;
+        ImGui::PushID(static_cast<int>(state.state));
+        ImGui::BeginGroup();
+        const ImVec2 tileSize{130.f, 120.f};
+        ImGui::InvisibleButton("##state_tile", tileSize);
+        const ImVec2 rectMin = ImGui::GetItemRectMin();
+        const ImVec2 rectMax = ImGui::GetItemRectMax();
+        const ImVec2 cursorAfter = ImGui::GetCursorPos();
+        const bool hovered = ImGui::IsItemHovered();
+        const bool active = state.state == currentState;
 
-        bool clicked = ImGui::ImageButton(state.texture, sf::Vector2f(50, 50), 3, color);
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const ImU32 inactiveColor = hovered ? IM_COL32(120, 124, 138, 255) : IM_COL32(102, 106, 122, 255);
+        const ImU32 activeColor = hovered ? IM_COL32(140, 166, 205, 255) : IM_COL32(124, 150, 192, 255);
+        const ImU32 borderColor = active ? IM_COL32(198, 220, 255, 255) : IM_COL32(160, 168, 188, 255);
+        drawList->AddRectFilled(rectMin, rectMax, active ? activeColor : inactiveColor, 20.f);
+        drawList->AddRect(rectMin, rectMax, borderColor, 20.f, 0, 2.5f);
 
-        if (clicked) {
+        if (ImGui::IsItemClicked()) {
             stateService.setCurrentState(state.state);
         }
+
+        const float imageSize = 52.f;
+        const ImVec2 imagePos{rectMin.x + (tileSize.x - imageSize) * 0.5f, rectMin.y + 14.f};
+        ImGui::SetCursorScreenPos(imagePos);
+        ImGui::Image(state.texture, sf::Vector2f(imageSize, imageSize));
+
+        ImGui::SetCursorScreenPos(ImVec2(rectMin.x + 12.f, rectMax.y - 40.f));
+        ImGui::PushTextWrapPos(rectMax.x - 12.f);
+        ImGui::PushStyleColor(ImGuiCol_Text, active ? ImVec4(0.98f, 0.99f, 1.0f, 1.0f) : ImVec4(0.90f, 0.93f, 0.98f, 1.0f));
+        ImGui::TextUnformatted(state.name.c_str());
+        ImGui::PopStyleColor();
+        ImGui::PopTextWrapPos();
+
+        ImGui::SetCursorPos(cursorAfter);
+        ImGui::EndGroup();
+        ImGui::PopID();
     }
-    ImGui::EndTable();
+
+    ImGui::PopStyleVar();
     ImGui::EndChild();
     ImGui::End();
 }
