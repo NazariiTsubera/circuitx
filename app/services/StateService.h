@@ -9,7 +9,8 @@
 enum State {
     Play,
     Pause,
-    Edit
+    Edit,
+    Settings
 };
 
 

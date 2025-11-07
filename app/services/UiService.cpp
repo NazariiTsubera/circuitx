@@ -179,6 +179,14 @@ UiService::UiService(
     states.push_back({State::Edit, "Edit", assetManager.getTexture("edit")});
     states.push_back({State::Play, "Play", assetManager.getTexture("play")});
     states.push_back({State::Pause, "Pause", assetManager.getTexture("pause")});
+    states.push_back({State::Settings, "Settings", assetManager.getTexture("gear")});
+
+    lastNonSettingsState = stateService.getCurrentState();
+    stateService.addCallback([this](State /*prev*/, State next) {
+        if (next != State::Settings) {
+            lastNonSettingsState = next;
+        }
+    });
 
 
     if (!imguiInitialized) {
@@ -677,17 +685,8 @@ void UiService::drawToolbox() {
 }
 
 void UiService::drawControlPanel() {
-    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 220.f), ImVec2(FLT_MAX, 220.f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 190.f), ImVec2(FLT_MAX, 190.f));
     ImGui::Begin("Control panel");
-
-    ImGui::TextUnformatted("Theme");
-    if (ImGui::RadioButton("Dark", currentTheme == UiTheme::Black)) {
-        applyTheme(UiTheme::Black);
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Light", currentTheme == UiTheme::White)) {
-        applyTheme(UiTheme::White);
-    }
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -753,6 +752,37 @@ void UiService::drawControlPanel() {
     ImGui::PopStyleVar();
     ImGui::EndChild();
     ImGui::End();
+}
+
+void UiService::drawSettingsWindow() {
+    if (stateService.getCurrentState() != State::Settings) {
+        return;
+    }
+    bool open = true;
+    if (!ImGui::Begin("Settings", &open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        if (!open) {
+            stateService.setCurrentState(lastNonSettingsState);
+        }
+        return;
+    }
+
+    ImGui::TextUnformatted("Appearance");
+    if (ImGui::RadioButton("Dark (Minimal)", currentTheme == UiTheme::Black)) {
+        applyTheme(UiTheme::Black);
+    }
+    if (ImGui::RadioButton("Light (Studio)", currentTheme == UiTheme::White)) {
+        applyTheme(UiTheme::White);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextWrapped("More settings coming soon. Let me know which knobs you need most.");
+
+    ImGui::End();
+    if (!open) {
+        stateService.setCurrentState(lastNonSettingsState);
+    }
 }
 
 void UiService::drawSimulation() {
@@ -959,6 +989,7 @@ void UiService::drawUI() {
     }
     drawTopology();
     drawControlPanel();
+    drawSettingsWindow();
 
     if (stateService.getCurrentState() == State::Play) {
         drawSimulation();

@@ -24,6 +24,7 @@ public:
         loadTexture("edit", "edit.png");
         loadTexture("play", "play.png");
         loadTexture("pause", "pause.png");
+        loadTexture("gear", "gear.png");
     }
     ~AssetManager() {}
 

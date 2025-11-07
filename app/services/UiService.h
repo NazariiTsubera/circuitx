@@ -81,8 +81,10 @@ private:
     bool toolboxVisible = false;
     bool toolboxHovered = false;
     UiTheme currentTheme = UiTheme::Black;
+    State lastNonSettingsState = State::Edit;
 
     void applyTheme(UiTheme theme);
+    void drawSettingsWindow();
 };
 
 
