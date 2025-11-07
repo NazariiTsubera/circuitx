@@ -12,6 +12,7 @@
 #include <optional>
 #include <unordered_map>
 #include <string>
+#include <sstream>
 
 #include "../helpers/AssetManager.hpp"
 
@@ -264,6 +265,17 @@ void UiService::drawCanvas() {
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         const auto labelMap = circuitController.buildComponentLabels();
+        const SimulationResult& simResult = circuitController.fetchSimulationResults();
+        const bool showSimOverlays = simResult.solved && stateService.getCurrentState() != State::Edit;
+
+        auto formatValue = [] (double value) {
+            std::ostringstream ss;
+            ss.setf(std::ios::fixed, std::ios::floatfield);
+            ss.precision(3);
+            ss << value;
+            return ss.str();
+        };
+
         std::vector<ComponentView> drawableComponents;
         drawableComponents.reserve(circuitController.getView().getComponents().size());
         for (const auto& [componentId, component] : circuitController.getView().getComponents()) {
@@ -276,22 +288,97 @@ void UiService::drawCanvas() {
             return lhs.id < rhs.id;
         });
 
+        std::unordered_map<unsigned int, double> nodeVoltages;
+        std::unordered_map<unsigned int, std::string> nodeNames;
+        std::unordered_map<std::string, const SimulationElementResult*> elementByLabel;
+
+        if (simResult.solved) {
+            nodeVoltages.reserve(simResult.nodes.size() + 1);
+            nodeNames.reserve(simResult.nodes.size() + 1);
+            for (const auto& node : simResult.nodes) {
+                nodeVoltages[node.id] = node.voltage;
+                nodeNames[node.id] = node.name;
+            }
+            nodeVoltages[simResult.referenceNodeId] = 0.0;
+            nodeNames[simResult.referenceNodeId] = simResult.referenceNodeName;
+
+            elementByLabel.reserve(simResult.elements.size());
+            for (const auto& element : simResult.elements) {
+                elementByLabel.emplace(element.label, &element);
+            }
+        }
+
+        if (showSimOverlays) {
+            for (const auto& [nodeId, position] : circuitController.getView().getNodes()) {
+                const auto voltageIt = nodeVoltages.find(nodeId);
+                const auto nameIt = nodeNames.find(nodeId);
+                if (voltageIt == nodeVoltages.end() || nameIt == nodeNames.end()) {
+                    continue;
+                }
+                std::string nodeText = nameIt->second + ": " + formatValue(voltageIt->second) + " V";
+                const ImVec2 center{canvasOrigin.x + position.x, canvasOrigin.y + position.y};
+                const ImVec2 textSize = ImGui::CalcTextSize(nodeText.c_str());
+                const float verticalOffset = 26.f;
+                const ImVec2 textPos{center.x - textSize.x * 0.5f, center.y - verticalOffset - textSize.y};
+                const ImVec2 padding{4.f, 2.f};
+                const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
+                const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
+                drawList->AddRectFilled(bgMin, bgMax, IM_COL32(245, 245, 245, 220));
+                drawList->AddRect(bgMin, bgMax, IM_COL32(60, 60, 60, 200));
+                drawList->AddText(textPos, IM_COL32(20, 20, 20, 255), nodeText.c_str());
+            }
+        }
+
         for (const auto& component : drawableComponents) {
             auto it = labelMap.find(component.id);
             if (it == labelMap.end()) {
                 continue;
             }
-            const ImVec2 center{canvasOrigin.x + component.position.x, canvasOrigin.y + component.position.y};
-            const ImVec2 textSize = ImGui::CalcTextSize(it->second.c_str());
-            const float verticalOffset = 24.f;
-            const ImVec2 textPos{center.x - textSize.x * 0.5f, center.y - verticalOffset};
-            const ImVec2 padding{4.f, 2.f};
-            const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
-            const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
+            std::vector<std::string> lines;
+            lines.push_back(it->second);
+            if (showSimOverlays) {
+                if (auto elemIt = elementByLabel.find(it->second); elemIt != elementByLabel.end() && elemIt->second) {
+                    const SimulationElementResult& elem = *elemIt->second;
+                    lines.push_back("dV = " + formatValue(elem.voltageDrop) + " V");
+                    if (elem.current.has_value()) {
+                        lines.push_back("I = " + formatValue(elem.current.value()) + " A");
+                    }
+                }
+            }
 
-            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(255, 255, 255, 200));
+            float maxWidth = 0.f;
+            float totalHeight = 0.f;
+            std::vector<ImVec2> lineSizes;
+            lineSizes.reserve(lines.size());
+            for (const auto& line : lines) {
+                ImVec2 size = ImGui::CalcTextSize(line.c_str());
+                lineSizes.push_back(size);
+                maxWidth = std::max(maxWidth, size.x);
+                totalHeight += size.y;
+            }
+            const float lineSpacing = 2.f;
+            if (lines.size() > 1) {
+                totalHeight += lineSpacing * static_cast<float>(lines.size() - 1);
+            }
+
+            const ImVec2 center{canvasOrigin.x + component.position.x, canvasOrigin.y + component.position.y};
+            const ImVec2 blockSize{maxWidth, totalHeight};
+            const float verticalOffset = 32.f;
+            const ImVec2 textOrigin{center.x - blockSize.x * 0.5f, center.y - verticalOffset};
+            const ImVec2 padding{6.f, 3.f};
+            const ImVec2 bgMin{textOrigin.x - padding.x, textOrigin.y - padding.y};
+            const ImVec2 bgMax{textOrigin.x + blockSize.x + padding.x, textOrigin.y + blockSize.y + padding.y};
+
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(255, 255, 255, 220));
             drawList->AddRect(bgMin, bgMax, IM_COL32(60, 60, 60, 200));
-            drawList->AddText(textPos, IM_COL32(20, 20, 20, 255), it->second.c_str());
+
+            float cursorY = textOrigin.y;
+            for (std::size_t i = 0; i < lines.size(); ++i) {
+                const ImVec2 size = lineSizes[i];
+                const float cursorX = center.x - size.x * 0.5f;
+                drawList->AddText(ImVec2(cursorX, cursorY), IM_COL32(20, 20, 20, 255), lines[i].c_str());
+                cursorY += size.y + lineSpacing;
+            }
         }
     }
     ImGui::EndChild();
