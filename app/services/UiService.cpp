@@ -182,6 +182,9 @@ void UiService::drawCanvas() {
             const bool selectableUnderCursor = componentUnderCursor.has_value() || wireUnderCursor.has_value();
 
             if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                if (componentUnderCursor) {
+                    selectedComponentId = componentUnderCursor->id;
+                }
                 contextMenuPosition = gridTool.snapToGrid(localMousePos);
                 contextMenuComponent = componentUnderCursor;
                 contextMenuWire = wireUnderCursor;
@@ -234,7 +237,7 @@ void UiService::drawCanvas() {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
                     const auto type = *static_cast<const ComponentType*>(payload->Data);
                     const sf::Vector2f snapped = gridTool.snapToGrid(localMousePos);
-                    circuitController.handle(AddComponentCommand{snapped, type});
+                    circuitController.handle(AddComponentCommand{snapped, type, placementRotationSteps});
                 }
 
                 ImGui::EndDragDropTarget();
@@ -243,6 +246,11 @@ void UiService::drawCanvas() {
             const bool canvasActive = ImGui::IsItemActive();
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+                if (componentUnderCursor) {
+                    selectedComponentId = componentUnderCursor->id;
+                } else if (!wireUnderCursor) {
+                    selectedComponentId.reset();
+                }
                 wireTool.begin(localMousePos);
             }
 
@@ -266,6 +274,13 @@ void UiService::drawCanvas() {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         const auto labelMap = circuitController.buildComponentLabels();
         const SimulationResult& simResult = circuitController.fetchSimulationResults();
+        std::optional<ComponentView> selectedComponent;
+        if (selectedComponentId) {
+            selectedComponent = circuitController.getComponent(*selectedComponentId);
+            if (!selectedComponent) {
+                selectedComponentId.reset();
+            }
+        }
         const bool showSimOverlays = simResult.solved && stateService.getCurrentState() != State::Edit;
 
         auto formatValue = [] (double value) {
@@ -315,6 +330,8 @@ void UiService::drawCanvas() {
                 if (voltageIt == nodeVoltages.end() || nameIt == nodeNames.end()) {
                     continue;
                 }
+                const bool highlightNode = selectedComponent &&
+                    (selectedComponent->nodeA == nodeId || selectedComponent->nodeB == nodeId);
                 std::string nodeText = nameIt->second + ": " + formatValue(voltageIt->second) + " V";
                 const ImVec2 center{canvasOrigin.x + position.x, canvasOrigin.y + position.y};
                 const ImVec2 textSize = ImGui::CalcTextSize(nodeText.c_str());
@@ -323,8 +340,10 @@ void UiService::drawCanvas() {
                 const ImVec2 padding{4.f, 2.f};
                 const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
                 const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
-                drawList->AddRectFilled(bgMin, bgMax, IM_COL32(245, 245, 245, 220));
-                drawList->AddRect(bgMin, bgMax, IM_COL32(60, 60, 60, 200));
+                const ImU32 bgColor = highlightNode ? IM_COL32(210, 235, 255, 235) : IM_COL32(245, 245, 245, 220);
+                const ImU32 borderColor = highlightNode ? IM_COL32(20, 120, 200, 230) : IM_COL32(60, 60, 60, 200);
+                drawList->AddRectFilled(bgMin, bgMax, bgColor);
+                drawList->AddRect(bgMin, bgMax, borderColor);
                 drawList->AddText(textPos, IM_COL32(20, 20, 20, 255), nodeText.c_str());
             }
         }
@@ -334,6 +353,7 @@ void UiService::drawCanvas() {
             if (it == labelMap.end()) {
                 continue;
             }
+            const bool componentSelected = selectedComponent && selectedComponent->id == component.id;
             std::vector<std::string> lines;
             lines.push_back(it->second);
             if (showSimOverlays) {
@@ -369,8 +389,11 @@ void UiService::drawCanvas() {
             const ImVec2 bgMin{textOrigin.x - padding.x, textOrigin.y - padding.y};
             const ImVec2 bgMax{textOrigin.x + blockSize.x + padding.x, textOrigin.y + blockSize.y + padding.y};
 
-            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(255, 255, 255, 220));
-            drawList->AddRect(bgMin, bgMax, IM_COL32(60, 60, 60, 200));
+            const ImU32 compBgColor = componentSelected ? IM_COL32(220, 245, 255, 230) : IM_COL32(255, 255, 255, 220);
+            const ImU32 compBorderColor = componentSelected ? IM_COL32(10, 110, 190, 230) : IM_COL32(60, 60, 60, 200);
+
+            drawList->AddRectFilled(bgMin, bgMax, compBgColor);
+            drawList->AddRect(bgMin, bgMax, compBorderColor);
 
             float cursorY = textOrigin.y;
             for (std::size_t i = 0; i < lines.size(); ++i) {
@@ -405,6 +428,73 @@ void UiService::drawPalette() {
     }
     ImGui::EndTable();
     ImGui::EndChild();
+    ImGui::End();
+}
+
+void UiService::drawToolbox() {
+    ImGui::Begin("Toolbox");
+
+    ImGui::Text("Placement orientation: %s", rotationStepsName(placementRotationSteps));
+    if (ImGui::Button("Rotate placement CCW")) {
+        placementRotationSteps = normalizeRotationSteps(placementRotationSteps - 1);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Rotate placement CW")) {
+        placementRotationSteps = normalizeRotationSteps(placementRotationSteps + 1);
+    }
+
+    ImGui::Separator();
+
+    std::optional<ComponentView> selectedComponent;
+    if (selectedComponentId) {
+        selectedComponent = circuitController.getComponent(*selectedComponentId);
+        if (!selectedComponent) {
+            selectedComponentId.reset();
+        }
+    }
+
+    if (selectedComponent) {
+        const auto labels = circuitController.buildComponentLabels();
+        std::string label;
+        if (auto it = labels.find(selectedComponent->id); it != labels.end()) {
+            label = it->second;
+        }
+        ImGui::Text("Selected: %s #%u", componentTypeName(selectedComponent->type), selectedComponent->id);
+        if (!label.empty()) {
+            ImGui::Text("Label: %s", label.c_str());
+        }
+        ImGui::Text("Orientation: %s", rotationStepsName(selectedComponent->rotationSteps));
+
+        if (ImGui::Button("Rotate CCW")) {
+            if (circuitController.rotateComponent(selectedComponent->id, -1)) {
+                toolboxStatus = "Component rotated counter-clockwise.";
+                selectedComponent = circuitController.getComponent(selectedComponent->id);
+            } else {
+                toolboxStatus = "Failed to rotate component.";
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Rotate CW")) {
+            if (circuitController.rotateComponent(selectedComponent->id, 1)) {
+                toolboxStatus = "Component rotated clockwise.";
+                selectedComponent = circuitController.getComponent(selectedComponent->id);
+            } else {
+                toolboxStatus = "Failed to rotate component.";
+            }
+        }
+
+        if (ImGui::Button("Clear selection")) {
+            selectedComponentId.reset();
+        }
+    } else {
+        ImGui::TextUnformatted("No component selected. Click a component on the canvas to select it.");
+    }
+
+    if (!toolboxStatus.empty()) {
+        ImGui::Separator();
+        ImGui::TextUnformatted(toolboxStatus.c_str());
+    }
+
     ImGui::End();
 }
 
@@ -630,10 +720,11 @@ void UiService::drawUI() {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
     drawPalette();
     drawCanvas();
+    drawToolbox();
     drawTopology();
     drawControlPanel();
 
-    if (stateService.getCurrentState() == Play) {
+    if (stateService.getCurrentState() == State::Play) {
         drawSimulation();
     }
     drawPropertiesWindow();

@@ -16,6 +16,13 @@ enum class ComponentType {
     Wire = 4
 };
 
+enum class ComponentRotation : int {
+    Right = 0,
+    Down = 1,
+    Left = 2,
+    Up = 3
+};
+
 inline const char* componentLabelPrefix(ComponentType type) {
     switch (type) {
         case ComponentType::Resistor:
@@ -38,6 +45,32 @@ inline std::string componentLabel(ComponentType type, std::size_t index) {
         return {};
     }
     return std::string(prefix) + std::to_string(index);
+}
+
+inline int normalizeRotationSteps(int rotationSteps) {
+    int normalized = rotationSteps % 4;
+    if (normalized < 0) {
+        normalized += 4;
+    }
+    return normalized;
+}
+
+inline float rotationStepsToDegrees(int rotationSteps) {
+    return static_cast<float>(normalizeRotationSteps(rotationSteps) * 90);
+}
+
+inline const char* rotationStepsName(int rotationSteps) {
+    switch (normalizeRotationSteps(rotationSteps)) {
+        case 0:
+            return "Right";
+        case 1:
+            return "Down";
+        case 2:
+            return "Left";
+        case 3:
+            return "Up";
+    }
+    return "Unknown";
 }
 
 #endif //COMPONENTTYPE_H

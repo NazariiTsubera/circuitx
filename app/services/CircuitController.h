@@ -21,12 +21,14 @@ public:
 
     void handle(const CircuitCommand& command);
     void simulate();
+    bool rotateComponent(unsigned int componentId, int rotationDelta);
     std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const;
     std::optional<WireView> getWireAt(sf::Vector2f position, float tolerance = 6.f) const;
     std::optional<float> getComponentValue(const ComponentView& component) const;
     bool updateComponentValue(const ComponentView& component, float newValue);
     void refreshTopologyCache();
     std::unordered_map<unsigned int, std::string> buildComponentLabels() const;
+    std::optional<ComponentView> getComponent(unsigned int componentId) const { return view.getComponent(componentId); }
 
     CircuitView& getView() { return view; }
     const CircuitView& getView() const { return view; }

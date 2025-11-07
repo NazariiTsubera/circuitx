@@ -125,5 +125,7 @@ void Visualizer::drawComponent(sf::RenderTarget& target, const ComponentView& co
     body.setOutlineThickness(1.f);
     body.setOutlineColor(sf::Color::Black);
 
+    body.setRotation(rotationStepsToDegrees(component.rotationSteps));
+
     target.draw(body);
 }

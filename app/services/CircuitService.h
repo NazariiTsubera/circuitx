@@ -12,7 +12,11 @@
 #include "ComponentType.h"
 
 struct DeleteCommand { sf::Vector2f position; };
-struct AddComponentCommand { sf::Vector2f position; ComponentType type; };
+struct AddComponentCommand {
+    sf::Vector2f position;
+    ComponentType type;
+    int rotationSteps = 0;
+};
 struct AddWireCommand { sf::Vector2f start; sf::Vector2f end; };
 
 using CircuitCommand = std::variant<DeleteCommand, AddComponentCommand, AddWireCommand>;

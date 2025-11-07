@@ -27,6 +27,39 @@ inline bool nearlyEqual(const sf::Vector2f& a, const sf::Vector2f& b, float eps 
     return nearlyEqual(a.x, b.x, eps) && nearlyEqual(a.y, b.y, eps);
 }
 
+inline std::pair<sf::Vector2f, sf::Vector2f> computeTerminals(const CoordinateTool& gridTool,
+                                                              const sf::Vector2f& center,
+                                                              float spacing,
+                                                              int rotationSteps) {
+    const int rotation = normalizeRotationSteps(rotationSteps);
+    sf::Vector2f offsetA{};
+    sf::Vector2f offsetB{};
+    switch (rotation) {
+        case 0:
+            offsetA = {-spacing, 0.f};
+            offsetB = {spacing, 0.f};
+            break;
+        case 1:
+            offsetA = {0.f, spacing};
+            offsetB = {0.f, -spacing};
+            break;
+        case 2:
+            offsetA = {spacing, 0.f};
+            offsetB = {-spacing, 0.f};
+            break;
+        case 3:
+            offsetA = {0.f, -spacing};
+            offsetB = {0.f, spacing};
+            break;
+        default:
+            break;
+    }
+
+    const sf::Vector2f terminalA = gridTool.snapToGrid(center + offsetA);
+    const sf::Vector2f terminalB = gridTool.snapToGrid(center + offsetB);
+    return {terminalA, terminalB};
+}
+
 
 CircuitController::CircuitController(CircuitService& service, CircuitView& view, const CoordinateTool& gridTool)
     : service(service), view(view), gridTool(gridTool) {
@@ -80,14 +113,13 @@ void CircuitController::handleComponent(const AddComponentCommand& command) {
     const sf::Vector2f basePosition = gridTool.snapToGrid(toVector(command.position));
     const float spacing = static_cast<float>(gridTool.getSettings().spacing);
 
-    const sf::Vector2f leftTerminal = gridTool.snapToGrid({basePosition.x - spacing, basePosition.y});
-    const sf::Vector2f rightTerminal = gridTool.snapToGrid({basePosition.x + spacing, basePosition.y});
+    const auto [terminalA, terminalB] = computeTerminals(gridTool, basePosition, spacing, command.rotationSteps);
 
-    const unsigned int nodeA = ensureNodeAt(leftTerminal);
-    const unsigned int nodeB = ensureNodeAt(rightTerminal);
+    const unsigned int nodeA = ensureNodeAt(terminalA);
+    const unsigned int nodeB = ensureNodeAt(terminalB);
 
     const auto componentId = service.addComponent(command.type, nodeA, nodeB);
-    view.recordComponent(componentId, command.type, basePosition, nodeA, nodeB);
+    view.recordComponent(componentId, command.type, basePosition, nodeA, nodeB, normalizeRotationSteps(command.rotationSteps));
 }
 
 void CircuitController::handleDelete(const DeleteCommand& command) {
@@ -104,6 +136,26 @@ void CircuitController::handleDelete(const DeleteCommand& command) {
         cleanupNode(wire->startNode);
         cleanupNode(wire->endNode);
     }
+}
+
+bool CircuitController::rotateComponent(unsigned int componentId, int rotationDelta) {
+    auto componentOpt = view.getComponent(componentId);
+    if (!componentOpt.has_value()) {
+        return false;
+    }
+    ComponentView component = *componentOpt;
+    if (component.type == ComponentType::Wire) {
+        return false;
+    }
+
+    const int newRotation = normalizeRotationSteps(component.rotationSteps + rotationDelta);
+    const float spacing = static_cast<float>(gridTool.getSettings().spacing);
+    const auto [terminalA, terminalB] = computeTerminals(gridTool, component.position, spacing, newRotation);
+
+    view.recordNode(component.nodeA, terminalA);
+    view.recordNode(component.nodeB, terminalB);
+    view.setComponentRotation(componentId, newRotation);
+    return true;
 }
 
 unsigned int CircuitController::ensureNodeAt(sf::Vector2f position) {

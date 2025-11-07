@@ -57,6 +57,7 @@ public:
 private:
     void drawCanvas();
     void drawPalette();
+    void drawToolbox();
     void drawTopology();
     void drawControlPanel();
     void drawSimulation();
@@ -66,9 +67,12 @@ private:
     std::optional<ComponentView> propertiesComponent;
     std::optional<ComponentView> contextMenuComponent;
     std::optional<WireView> contextMenuWire;
+    std::optional<unsigned int> selectedComponentId;
     bool showPropertiesWindow = false;
     float propertiesValue = 0.f;
     std::string propertiesStatus;
+    std::string toolboxStatus;
+    int placementRotationSteps = 0;
 };
 
 

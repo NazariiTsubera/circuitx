@@ -19,6 +19,7 @@ struct ComponentView {
     sf::Vector2f position;
     unsigned int nodeA;
     unsigned int nodeB;
+    int rotationSteps = 0;
 };
 
 struct WireView {
@@ -35,12 +36,21 @@ public:
         nodePositions[nodeId] = position;
     }
 
-    void recordComponent(unsigned int componentId, ComponentType type, sf::Vector2f position, unsigned int nodeA, unsigned int nodeB) {
+    void recordComponent(unsigned int componentId, ComponentType type, sf::Vector2f position,
+                         unsigned int nodeA, unsigned int nodeB, int rotationSteps = 0) {
         if (type == ComponentType::Wire) {
             wires.push_back({nodeA, nodeB});
             return;
         }
-        components[componentId] = ComponentView{componentId, type, position, nodeA, nodeB};
+        components[componentId] = ComponentView{componentId, type, position, nodeA, nodeB, rotationSteps};
+    }
+
+    bool setComponentRotation(unsigned int componentId, int rotationSteps) {
+        if (auto it = components.find(componentId); it != components.end()) {
+            it->second.rotationSteps = rotationSteps;
+            return true;
+        }
+        return false;
     }
 
     std::optional<sf::Vector2f> getNodePosition(unsigned int nodeId) const {
@@ -78,6 +88,12 @@ public:
     const std::unordered_map<unsigned int, sf::Vector2f>& getNodes() const { return nodePositions; }
     const std::vector<WireView>& getWires() const { return wires; }
     const std::unordered_map<unsigned int, ComponentView>& getComponents() const { return components; }
+    std::optional<ComponentView> getComponent(unsigned int componentId) const {
+        if (auto it = components.find(componentId); it != components.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
     const WireView& getWire(std::size_t index) const { return wires.at(index); }
     std::size_t wireCount() const { return wires.size(); }
 
