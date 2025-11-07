@@ -664,6 +664,13 @@ void UiService::drawToolbox() {
             }
         }
 
+        if (ImGui::Button("Delete")) {
+            circuitController.handle(DeleteCommand{selectedComponent->position});
+            selectedComponentId.reset();
+            toolboxVisible = false;
+            toolboxStatus = "Component deleted.";
+        }
+
         if (ImGui::Button("Clear selection")) {
             selectedComponentId.reset();
             toolboxVisible = false;

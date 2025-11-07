@@ -123,18 +123,32 @@ void CircuitController::handleComponent(const AddComponentCommand& command) {
 }
 
 void CircuitController::handleDelete(const DeleteCommand& command) {
-    const sf::Vector2f snapped = gridTool.snapToGrid(toVector(command.position));
-    if (auto component = view.removeComponentAt(snapped)) {
-        service.removeComponent(component->type, component->nodeA, component->nodeB);
-        cleanupNode(component->nodeA);
-        cleanupNode(component->nodeB);
+    const sf::Vector2f raw = toVector(command.position);
+
+    auto tryErase = [&](const sf::Vector2f& target) -> bool {
+        if (auto component = view.removeComponentAt(target)) {
+            service.removeComponent(component->type, component->nodeA, component->nodeB);
+            cleanupNode(component->nodeA);
+            cleanupNode(component->nodeB);
+            return true;
+        }
+
+        if (auto wire = view.removeWireAtPosition(target)) {
+            service.removeComponent(ComponentType::Wire, wire->startNode, wire->endNode);
+            cleanupNode(wire->startNode);
+            cleanupNode(wire->endNode);
+            return true;
+        }
+        return false;
+    };
+
+    if (tryErase(raw)) {
         return;
     }
 
-    if (auto wire = view.removeWireAtPosition(snapped)) {
-        service.removeComponent(ComponentType::Wire, wire->startNode, wire->endNode);
-        cleanupNode(wire->startNode);
-        cleanupNode(wire->endNode);
+    const sf::Vector2f snapped = gridTool.snapToGrid(raw);
+    if ((snapped.x != raw.x) || (snapped.y != raw.y)) {
+        tryErase(snapped);
     }
 }
 
