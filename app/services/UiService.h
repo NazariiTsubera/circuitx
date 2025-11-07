@@ -60,8 +60,15 @@ private:
     void drawTopology();
     void drawControlPanel();
     void drawSimulation();
+    void drawPropertiesWindow();
 
     float computePixelScale() const;
+    std::optional<ComponentView> propertiesComponent;
+    std::optional<ComponentView> contextMenuComponent;
+    std::optional<WireView> contextMenuWire;
+    bool showPropertiesWindow = false;
+    float propertiesValue = 0.f;
+    std::string propertiesStatus;
 };
 
 

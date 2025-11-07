@@ -98,3 +98,95 @@ void CircuitService::removeNode(unsigned int nodeId) {
     auto& nodes = circuit.nodesMutable();
     nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&](const circuitx::Node& node) { return node.id == nodeId; }), nodes.end());
 }
+
+std::optional<float> CircuitService::getComponentValue(ComponentType type, unsigned int nodeA, unsigned int nodeB) const {
+    auto matches = [&](unsigned int first, unsigned int second) {
+        return (first == nodeA && second == nodeB) || (first == nodeB && second == nodeA);
+    };
+
+    const auto elementsSnapshot = circuit.getElements();
+    for (const auto& elem : elementsSnapshot) {
+        switch (type) {
+            case ComponentType::Resistor:
+                if (const auto* res = std::get_if<circuitx::Res>(&elem)) {
+                    if (matches(res->a, res->b)) {
+                        return res->res;
+                    }
+                }
+                break;
+            case ComponentType::Capacitor:
+                if (const auto* cap = std::get_if<circuitx::Cap>(&elem)) {
+                    if (matches(cap->a, cap->b)) {
+                        return cap->cap;
+                    }
+                }
+                break;
+            case ComponentType::ISource:
+                if (const auto* isrc = std::get_if<circuitx::ISource>(&elem)) {
+                    if (matches(isrc->a, isrc->b)) {
+                        return isrc->cur;
+                    }
+                }
+                break;
+            case ComponentType::VSource:
+                if (const auto* vsrc = std::get_if<circuitx::VSource>(&elem)) {
+                    if (matches(vsrc->a, vsrc->b)) {
+                        return vsrc->vol;
+                    }
+                }
+                break;
+            case ComponentType::Wire:
+                break;
+        }
+    }
+
+    return std::nullopt;
+}
+
+bool CircuitService::updateComponentValue(ComponentType type, unsigned int nodeA, unsigned int nodeB, float value) {
+    auto matches = [&](unsigned int first, unsigned int second) {
+        return (first == nodeA && second == nodeB) || (first == nodeB && second == nodeA);
+    };
+
+    auto& elements = circuit.elementsMutable();
+    for (auto& elem : elements) {
+        switch (type) {
+            case ComponentType::Resistor:
+                if (auto* res = std::get_if<circuitx::Res>(&elem)) {
+                    if (matches(res->a, res->b)) {
+                        res->res = value;
+                        return true;
+                    }
+                }
+                break;
+            case ComponentType::Capacitor:
+                if (auto* cap = std::get_if<circuitx::Cap>(&elem)) {
+                    if (matches(cap->a, cap->b)) {
+                        cap->cap = value;
+                        return true;
+                    }
+                }
+                break;
+            case ComponentType::ISource:
+                if (auto* isrc = std::get_if<circuitx::ISource>(&elem)) {
+                    if (matches(isrc->a, isrc->b)) {
+                        isrc->cur = value;
+                        return true;
+                    }
+                }
+                break;
+            case ComponentType::VSource:
+                if (auto* vsrc = std::get_if<circuitx::VSource>(&elem)) {
+                    if (matches(vsrc->a, vsrc->b)) {
+                        vsrc->vol = value;
+                        return true;
+                    }
+                }
+                break;
+            case ComponentType::Wire:
+                break;
+        }
+    }
+
+    return false;
+}

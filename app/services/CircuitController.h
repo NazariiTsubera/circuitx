@@ -7,10 +7,13 @@
 
 #include "CircuitService.h"
 #include "CircuitView.h"
+#include "SimulationResult.h"
 #include "../helpers/CoordinateTool.hpp"
 
+#include <optional>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 class CircuitController {
 public:
@@ -18,13 +21,19 @@ public:
 
     void handle(const CircuitCommand& command);
     void simulate();
+    std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const;
+    std::optional<WireView> getWireAt(sf::Vector2f position, float tolerance = 6.f) const;
+    std::optional<float> getComponentValue(const ComponentView& component) const;
+    bool updateComponentValue(const ComponentView& component, float newValue);
+    void refreshTopologyCache();
+    std::unordered_map<unsigned int, std::string> buildComponentLabels() const;
 
     CircuitView& getView() { return view; }
     const CircuitView& getView() const { return view; }
 
     const CircuitService& getService() const { return service; }
     const std::string& getTopology() const { return cachedTopology; }
-    const std::string& fetchSimulationResults() const { return cachedSimulation; }
+    const SimulationResult& fetchSimulationResults() const { return simulationResult; }
     bool hasSelectableAt(sf::Vector2f position) const { return view.hasSelectableAt(position); }
 
 private:
@@ -42,7 +51,7 @@ private:
     CircuitView& view;
     const CoordinateTool& gridTool;
     std::string cachedTopology;
-    std::string cachedSimulation;
+    SimulationResult simulationResult;
 };
 
 #endif //CIRCUITCONTROLLER_H

@@ -98,6 +98,17 @@ public:
         return std::nullopt;
     }
 
+    std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const {
+        const sf::Vector2f halfSize{16.f, 7.f};
+        for (const auto& [id, component] : components) {
+            const sf::Vector2f delta{position.x - component.position.x, position.y - component.position.y};
+            if (std::abs(delta.x) <= halfSize.x + tolerance && std::abs(delta.y) <= halfSize.y + tolerance) {
+                return component;
+            }
+        }
+        return std::nullopt;
+    }
+
     static bool pointNearSegment(sf::Vector2f p, sf::Vector2f a, sf::Vector2f b, float tolerance) {
         const float minX = std::min(a.x, b.x) - tolerance;
         const float maxX = std::max(a.x, b.x) + tolerance;

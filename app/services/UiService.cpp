@@ -10,12 +10,50 @@
 #include <stdexcept>
 #include <algorithm>
 #include <optional>
+#include <unordered_map>
+#include <string>
 
 #include "../helpers/AssetManager.hpp"
 
 namespace {
 inline sf::Vector2f toVector(const ImVec2& value) {
     return {value.x, value.y};
+}
+
+const char* componentTypeName(ComponentType type) {
+    switch (type) {
+        case ComponentType::Resistor:
+            return "Resistor";
+        case ComponentType::Capacitor:
+            return "Capacitor";
+        case ComponentType::ISource:
+            return "Current Source";
+        case ComponentType::VSource:
+            return "Voltage Source";
+        case ComponentType::Wire:
+            return "Wire";
+    }
+    return "Unknown";
+}
+
+const char* componentValueLabel(ComponentType type) {
+    switch (type) {
+        case ComponentType::Resistor:
+            return "Resistance (Ohm)";
+        case ComponentType::Capacitor:
+            return "Capacitance (F)";
+        case ComponentType::ISource:
+            return "Current (A)";
+        case ComponentType::VSource:
+            return "Voltage (V)";
+        case ComponentType::Wire:
+            return "Value";
+    }
+    return "Value";
+}
+
+bool componentHasEditableValue(ComponentType type) {
+    return type != ComponentType::Wire;
 }
 }
 
@@ -138,10 +176,14 @@ void UiService::drawCanvas() {
             const sf::Vector2f mousePos = toVector(mousePosIm);
             const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
 
-            const bool selectableUnderCursor = circuitController.hasSelectableAt(localMousePos);
+            const auto componentUnderCursor = circuitController.getComponentAt(localMousePos);
+            const auto wireUnderCursor = circuitController.getWireAt(localMousePos);
+            const bool selectableUnderCursor = componentUnderCursor.has_value() || wireUnderCursor.has_value();
 
             if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 contextMenuPosition = gridTool.snapToGrid(localMousePos);
+                contextMenuComponent = componentUnderCursor;
+                contextMenuWire = wireUnderCursor;
                 ImGui::OpenPopup("#canvas-context");
             }
 
@@ -151,13 +193,40 @@ void UiService::drawCanvas() {
                 ImGui::TextUnformatted("Toolbox");
                 if (contextMenuPosition && ImGui::MenuItem("Delete")) {
                     circuitController.handle(DeleteCommand{*contextMenuPosition});
+                    if (propertiesComponent && contextMenuComponent && propertiesComponent->id == contextMenuComponent->id) {
+                        showPropertiesWindow = false;
+                        propertiesComponent.reset();
+                        propertiesStatus.clear();
+                    }
                     contextMenuPosition.reset();
+                    contextMenuComponent.reset();
+                    contextMenuWire.reset();
                     ImGui::CloseCurrentPopup();
+                }
+                if (contextMenuComponent && componentHasEditableValue(contextMenuComponent->type)) {
+                    if (ImGui::MenuItem("Properties")) {
+                        auto currentValue = circuitController.getComponentValue(*contextMenuComponent);
+                        if (currentValue) {
+                            propertiesValue = *currentValue;
+                            propertiesStatus.clear();
+                        } else {
+                            propertiesValue = 0.f;
+                            propertiesStatus = "Unable to read current value.";
+                        }
+                        propertiesComponent = contextMenuComponent;
+                        showPropertiesWindow = true;
+                        contextMenuPosition.reset();
+                        contextMenuComponent.reset();
+                        contextMenuWire.reset();
+                        ImGui::CloseCurrentPopup();
+                    }
                 }
                 ImGui::PopClipRect();
                 ImGui::EndPopup();
             } else {
                 contextMenuPosition.reset();
+                contextMenuComponent.reset();
+                contextMenuWire.reset();
             }
 
             if (ImGui::BeginDragDropTarget()) {
@@ -192,6 +261,38 @@ void UiService::drawCanvas() {
 
 
         ImGui::Image(canvasTexture.getTexture());
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        const auto labelMap = circuitController.buildComponentLabels();
+        std::vector<ComponentView> drawableComponents;
+        drawableComponents.reserve(circuitController.getView().getComponents().size());
+        for (const auto& [componentId, component] : circuitController.getView().getComponents()) {
+            if (component.type == ComponentType::Wire) {
+                continue;
+            }
+            drawableComponents.push_back(component);
+        }
+        std::sort(drawableComponents.begin(), drawableComponents.end(), [](const ComponentView& lhs, const ComponentView& rhs) {
+            return lhs.id < rhs.id;
+        });
+
+        for (const auto& component : drawableComponents) {
+            auto it = labelMap.find(component.id);
+            if (it == labelMap.end()) {
+                continue;
+            }
+            const ImVec2 center{canvasOrigin.x + component.position.x, canvasOrigin.y + component.position.y};
+            const ImVec2 textSize = ImGui::CalcTextSize(it->second.c_str());
+            const float verticalOffset = 24.f;
+            const ImVec2 textPos{center.x - textSize.x * 0.5f, center.y - verticalOffset};
+            const ImVec2 padding{4.f, 2.f};
+            const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
+            const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
+
+            drawList->AddRectFilled(bgMin, bgMax, IM_COL32(255, 255, 255, 200));
+            drawList->AddRect(bgMin, bgMax, IM_COL32(60, 60, 60, 200));
+            drawList->AddText(textPos, IM_COL32(20, 20, 20, 255), it->second.c_str());
+        }
     }
     ImGui::EndChild();
     ImGui::End();
@@ -248,12 +349,172 @@ void UiService::drawControlPanel() {
 void UiService::drawSimulation() {
     ImGui::Begin("Simulation");
 
-    ImGui::Text("Simulation Output : ");
+    const SimulationResult& result = circuitController.fetchSimulationResults();
 
-    ImGui::Text(circuitController.fetchSimulationResults().c_str());
+    if (!result.headline.empty()) {
+        ImGui::TextWrapped("%s", result.headline.c_str());
+    }
 
+    if (!result.textualReport.empty()) {
+        if (ImGui::SmallButton("Copy text report")) {
+            ImGui::SetClipboardText(result.textualReport.c_str());
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) {
+            ImGui::SetTooltip("Copies the detailed textual summary.");
+        }
+    }
+
+    if (!result.solved) {
+        if (!result.textualReport.empty()) {
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", result.textualReport.c_str());
+        } else {
+            ImGui::Spacing();
+            ImGui::TextUnformatted("No simulation data yet.");
+        }
+        ImGui::End();
+        return;
+    }
+
+    ImGui::Spacing();
+    ImGui::Text("Reference node: %s (ID %u)", result.referenceNodeName.c_str(), result.referenceNodeId);
+
+    if (ImGui::CollapsingHeader("Node Voltages", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (result.nodes.empty()) {
+            ImGui::TextUnformatted("Only the reference node is present.");
+        } else if (ImGui::BeginTable("node_voltages", 3,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Node ID", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Voltage (V)", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+            for (const auto& node : result.nodes) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%u", node.id);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(node.name.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%.6f", node.voltage);
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Element Details", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (result.elements.empty()) {
+            ImGui::TextUnformatted("No elements present in the current topology.");
+        } else if (ImGui::BeginTable("element_quantities", 6,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+            ImGui::TableSetupColumn("Nodes", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("dV (V)", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("I (A)", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+            for (const auto& element : result.elements) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(element.label.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(componentTypeName(element.type));
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%u -> %u", element.nodeA, element.nodeB);
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%.6f", element.voltageDrop);
+                ImGui::TableSetColumnIndex(4);
+                if (element.current.has_value()) {
+                    ImGui::Text("%.6f", element.current.value());
+                } else {
+                    ImGui::TextUnformatted("-");
+                }
+                ImGui::TableSetColumnIndex(5);
+                ImGui::TextWrapped("%s", element.detail.c_str());
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    if (!result.textualReport.empty() &&
+        ImGui::CollapsingHeader("Raw Text Report")) {
+        if (ImGui::BeginChild("#raw_text_report", ImVec2(0, 180.f), true,
+                              ImGuiWindowFlags_HorizontalScrollbar)) {
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(result.textualReport.c_str());
+            ImGui::PopTextWrapPos();
+        }
+        ImGui::EndChild();
+    }
 
     ImGui::End();
+}
+
+void UiService::drawPropertiesWindow() {
+    if (!showPropertiesWindow || !propertiesComponent) {
+        return;
+    }
+
+    bool open = showPropertiesWindow;
+    const ComponentView& component = *propertiesComponent;
+
+    if (!ImGui::Begin("Component Properties", &open)) {
+        ImGui::End();
+        if (!open) {
+            showPropertiesWindow = false;
+            propertiesComponent.reset();
+            propertiesStatus.clear();
+        }
+        return;
+    }
+
+    ImGui::Text("Component: %s", componentTypeName(component.type));
+    ImGui::Text("ID: %u", component.id);
+    ImGui::Text("Nodes: %u -> %u", component.nodeA, component.nodeB);
+    if (component.type != ComponentType::Wire) {
+        const auto labels = circuitController.buildComponentLabels();
+        if (auto it = labels.find(component.id); it != labels.end()) {
+            ImGui::Text("Label: %s", it->second.c_str());
+        }
+    }
+
+    if (!componentHasEditableValue(component.type)) {
+        ImGui::TextUnformatted("This component has no editable properties.");
+    } else {
+        ImGui::InputFloat(componentValueLabel(component.type), &propertiesValue, 0.0f, 0.0f, "%.6f");
+        if (ImGui::Button("Apply")) {
+            if (circuitController.updateComponentValue(component, propertiesValue)) {
+                propertiesStatus = "Properties updated.";
+            } else {
+                propertiesStatus = "Failed to update component.";
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reload")) {
+            if (auto current = circuitController.getComponentValue(component)) {
+                propertiesValue = *current;
+                propertiesStatus.clear();
+            } else {
+                propertiesStatus = "Unable to reload current value.";
+            }
+        }
+    }
+
+    if (!propertiesStatus.empty()) {
+        ImGui::TextUnformatted(propertiesStatus.c_str());
+    }
+
+    if (ImGui::Button("Close")) {
+        open = false;
+    }
+
+    ImGui::End();
+
+    if (!open) {
+        showPropertiesWindow = false;
+        propertiesComponent.reset();
+        propertiesStatus.clear();
+    }
 }
 
 void UiService::drawTopology() {
@@ -288,4 +549,5 @@ void UiService::drawUI() {
     if (stateService.getCurrentState() == Play) {
         drawSimulation();
     }
+    drawPropertiesWindow();
 }
