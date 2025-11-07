@@ -14,6 +14,8 @@
 #include <string>
 #include <sstream>
 #include <cfloat>
+#include <limits>
+#include <cmath>
 
 #include "../helpers/AssetManager.hpp"
 
@@ -277,16 +279,44 @@ void UiService::drawCanvas() {
         ImGui::PopStyleVar();
         ImGui::SetCursorScreenPos(screenPos);
 
-        if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
-            if (ImGui::BeginPopupContextItem("#canvas-context")) {
-                const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
-                ImGui::PushClipRect(screenPos, clipMax, true);
-                ImGui::TextUnformatted("Toolbox");
+        auto clearSelection = [&]() {
+            selectedComponentId.reset();
+            selectedWire.reset();
+            selectedNodeId.reset();
+            selectionKind = ToolboxSelection::None;
+            toolboxVisible = false;
+            toolboxStatus.clear();
+        };
 
-                ImGui::PopClipRect();
-                ImGui::EndPopup();
+        auto selectComponent = [&](const ComponentView& comp) {
+            selectedComponentId = comp.id;
+            selectedWire.reset();
+            selectedNodeId.reset();
+            selectionKind = ToolboxSelection::Component;
+        };
+
+        auto selectWire = [&](const WireView& wire) {
+            selectedWire = wire;
+            selectedComponentId.reset();
+            selectedNodeId.reset();
+            selectionKind = ToolboxSelection::Wire;
+        };
+
+        auto selectNode = [&](unsigned int nodeId) {
+            selectedNodeId = nodeId;
+            selectedComponentId.reset();
+            selectedWire.reset();
+            selectionKind = ToolboxSelection::Node;
+        };
+
+        auto openToolbox = [&]() {
+            if (selectionKind == ToolboxSelection::None) {
+                toolboxVisible = false;
+                return;
             }
-        }
+            toolboxVisible = true;
+            toolboxStatus.clear();
+        };
 
         //Events
         {
@@ -296,61 +326,21 @@ void UiService::drawCanvas() {
 
             const auto componentUnderCursor = circuitController.getComponentAt(localMousePos);
             const auto wireUnderCursor = circuitController.getWireAt(localMousePos);
-            const bool selectableUnderCursor = componentUnderCursor.has_value() || wireUnderCursor.has_value();
+            const auto nodeUnderCursor = circuitController.getView().getNodeNear(localMousePos);
 
-            if (selectableUnderCursor && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (componentUnderCursor) {
-                    selectedComponentId = componentUnderCursor->id;
-                    toolboxVisible = true;
+                    selectComponent(*componentUnderCursor);
+                    openToolbox();
+                } else if (wireUnderCursor) {
+                    selectWire(*wireUnderCursor);
+                    openToolbox();
+                } else if (nodeUnderCursor) {
+                    selectNode(*nodeUnderCursor);
+                    openToolbox();
                 } else {
-                    toolboxVisible = false;
+                    clearSelection();
                 }
-                contextMenuPosition = gridTool.snapToGrid(localMousePos);
-                contextMenuComponent = componentUnderCursor;
-                contextMenuWire = wireUnderCursor;
-                ImGui::OpenPopup("#canvas-context");
-            }
-
-            if (ImGui::BeginPopup("#canvas-context")) {
-                const ImVec2 clipMax(screenPos.x + availableSize.x, screenPos.y + availableSize.y);
-                ImGui::PushClipRect(screenPos, clipMax, true);
-                ImGui::TextUnformatted("Toolbox");
-                if (contextMenuPosition && ImGui::MenuItem("Delete")) {
-                    circuitController.handle(DeleteCommand{*contextMenuPosition});
-                    if (propertiesComponent && contextMenuComponent && propertiesComponent->id == contextMenuComponent->id) {
-                        showPropertiesWindow = false;
-                        propertiesComponent.reset();
-                        propertiesStatus.clear();
-                    }
-                    contextMenuPosition.reset();
-                    contextMenuComponent.reset();
-                    contextMenuWire.reset();
-                    ImGui::CloseCurrentPopup();
-                }
-                if (contextMenuComponent && componentHasEditableValue(contextMenuComponent->type)) {
-                    if (ImGui::MenuItem("Properties")) {
-                        auto currentValue = circuitController.getComponentValue(*contextMenuComponent);
-                        if (currentValue) {
-                            propertiesValue = *currentValue;
-                            propertiesStatus.clear();
-                        } else {
-                            propertiesValue = 0.f;
-                            propertiesStatus = "Unable to read current value.";
-                        }
-                        propertiesComponent = contextMenuComponent;
-                        showPropertiesWindow = true;
-                        contextMenuPosition.reset();
-                        contextMenuComponent.reset();
-                        contextMenuWire.reset();
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-                ImGui::PopClipRect();
-                ImGui::EndPopup();
-            } else {
-                contextMenuPosition.reset();
-                contextMenuComponent.reset();
-                contextMenuWire.reset();
             }
 
             if (ImGui::BeginDragDropTarget()) {
@@ -367,12 +357,16 @@ void UiService::drawCanvas() {
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
                 if (componentUnderCursor) {
-                    selectedComponentId = componentUnderCursor->id;
-                } else if (!wireUnderCursor) {
-                    selectedComponentId.reset();
+                    selectComponent(*componentUnderCursor);
+                    toolboxVisible = false;
+                } else if (wireUnderCursor) {
+                    selectWire(*wireUnderCursor);
+                    toolboxVisible = false;
+                } else if (nodeUnderCursor) {
+                    selectNode(*nodeUnderCursor);
                     toolboxVisible = false;
                 } else {
-                    toolboxVisible = false;
+                    clearSelection();
                 }
                 wireTool.begin(localMousePos);
             }
@@ -604,6 +598,10 @@ void UiService::drawToolbox() {
         return;
     }
 
+    if (!toolboxVisible || selectionKind == ToolboxSelection::None) {
+        toolboxHovered = false;
+        return;
+    }
     bool open = toolboxVisible;
     if (!ImGui::Begin("Toolbox", &open)) {
         toolboxHovered = false;
@@ -614,6 +612,26 @@ void UiService::drawToolbox() {
 
     toolboxHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup |
                                             ImGuiHoveredFlags_ChildWindows);
+
+    auto clearSelection = [&]() {
+        selectionKind = ToolboxSelection::None;
+        selectedComponentId.reset();
+        selectedWire.reset();
+        selectedNodeId.reset();
+        toolboxVisible = false;
+    };
+
+    auto deleteAtPosition = [&](const sf::Vector2f& position) {
+        const sf::Vector2f snapped = gridTool.snapToGrid(position);
+        circuitController.handle(DeleteCommand{snapped});
+        toolboxStatus = "Element deleted.";
+        if (propertiesComponent) {
+            showPropertiesWindow = false;
+            propertiesComponent.reset();
+            propertiesStatus.clear();
+        }
+        clearSelection();
+    };
 
     ImGui::Text("Placement orientation: %s", rotationStepsName(placementRotationSteps));
     if (ImGui::Button("Rotate placement CCW")) {
@@ -626,57 +644,82 @@ void UiService::drawToolbox() {
 
     ImGui::Separator();
 
-    std::optional<ComponentView> selectedComponent;
-    if (selectedComponentId) {
-        selectedComponent = circuitController.getComponent(*selectedComponentId);
-        if (!selectedComponent) {
-            selectedComponentId.reset();
-        }
-    }
-
-    if (selectedComponent) {
-        const auto labels = circuitController.buildComponentLabels();
-        std::string label;
-        if (auto it = labels.find(selectedComponent->id); it != labels.end()) {
-            label = it->second;
-        }
-        ImGui::Text("Selected: %s #%u", componentTypeName(selectedComponent->type), selectedComponent->id);
-        if (!label.empty()) {
-            ImGui::Text("Label: %s", label.c_str());
-        }
-        ImGui::Text("Orientation: %s", rotationStepsName(selectedComponent->rotationSteps));
-
-        if (ImGui::Button("Rotate CCW")) {
-            if (circuitController.rotateComponent(selectedComponent->id, -1)) {
-                toolboxStatus = "Component rotated counter-clockwise.";
-                selectedComponent = circuitController.getComponent(selectedComponent->id);
-            } else {
-                toolboxStatus = "Failed to rotate component.";
+    if (selectionKind == ToolboxSelection::Component && selectedComponentId) {
+        if (auto selectedComponent = circuitController.getComponent(*selectedComponentId)) {
+            const auto labels = circuitController.buildComponentLabels();
+            std::string label;
+            if (auto it = labels.find(selectedComponent->id); it != labels.end()) {
+                label = it->second;
             }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Rotate CW")) {
-            if (circuitController.rotateComponent(selectedComponent->id, 1)) {
-                toolboxStatus = "Component rotated clockwise.";
-                selectedComponent = circuitController.getComponent(selectedComponent->id);
-            } else {
-                toolboxStatus = "Failed to rotate component.";
+            ImGui::Text("Component: %s (#%u)", componentTypeName(selectedComponent->type), selectedComponent->id);
+            if (!label.empty()) {
+                ImGui::Text("Label: %s", label.c_str());
             }
-        }
+            ImGui::Text("Orientation: %s", rotationStepsName(selectedComponent->rotationSteps));
 
-        if (ImGui::Button("Delete")) {
-            circuitController.handle(DeleteCommand{selectedComponent->position});
-            selectedComponentId.reset();
-            toolboxVisible = false;
-            toolboxStatus = "Component deleted.";
-        }
+            if (ImGui::Button("Rotate CCW")) {
+                if (circuitController.rotateComponent(selectedComponent->id, -1)) {
+                    toolboxStatus = "Component rotated counter-clockwise.";
+                } else {
+                    toolboxStatus = "Failed to rotate component.";
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Rotate CW")) {
+                if (circuitController.rotateComponent(selectedComponent->id, 1)) {
+                    toolboxStatus = "Component rotated clockwise.";
+                } else {
+                    toolboxStatus = "Failed to rotate component.";
+                }
+            }
 
-        if (ImGui::Button("Clear selection")) {
-            selectedComponentId.reset();
-            toolboxVisible = false;
+            if (componentHasEditableValue(selectedComponent->type)) {
+                if (ImGui::Button("Edit Value")) {
+                    if (auto current = circuitController.getComponentValue(*selectedComponent)) {
+                        propertiesValue = *current;
+                        propertiesStatus.clear();
+                    } else {
+                        propertiesValue = 0.f;
+                        propertiesStatus = "Unable to read current value.";
+                    }
+                    propertiesComponent = selectedComponent;
+                    showPropertiesWindow = true;
+                }
+            }
+
+            if (ImGui::Button("Delete Component")) {
+                deleteAtPosition(selectedComponent->position);
+                ImGui::End();
+                toolboxHovered = false;
+                return;
+            }
+        } else {
+            clearSelection();
+        }
+    } else if (selectionKind == ToolboxSelection::Wire && selectedWire) {
+        ImGui::Text("Wire: %u -> %u", selectedWire->startNode, selectedWire->endNode);
+        if (ImGui::Button("Delete Wire")) {
+            circuitController.deleteWire(*selectedWire);
+            clearSelection();
+            ImGui::End();
+            toolboxHovered = false;
+            return;
+        }
+    } else if (selectionKind == ToolboxSelection::Node && selectedNodeId) {
+        const auto nodePos = circuitController.getView().getNodePosition(*selectedNodeId);
+        ImGui::Text("Node: %u", *selectedNodeId);
+        if (nodePos) {
+            ImGui::Text("Position: (%.1f, %.1f)", nodePos->x, nodePos->y);
+        }
+        ImGui::TextWrapped("Nodes inherit their behavior from connected elements. Delete or edit those elements instead.");
+        if (ImGui::Button("Deselect")) {
+            clearSelection();
+            ImGui::End();
+            toolboxHovered = false;
+            return;
         }
     } else {
-        ImGui::TextUnformatted("No component selected. Click a component on the canvas to select it.");
+        ImGui::TextUnformatted("Select an element, wire, or node to inspect.");
     }
 
     if (!toolboxStatus.empty()) {
@@ -685,10 +728,11 @@ void UiService::drawToolbox() {
     }
 
     ImGui::End();
-    if (!selectedComponentId) {
-        open = false;
+    if (!open) {
+        clearSelection();
+    } else {
+        toolboxVisible = true;
     }
-    toolboxVisible = open;
 }
 
 void UiService::drawControlPanel() {
@@ -882,6 +926,8 @@ void UiService::drawSimulation() {
         }
     }
 
+    drawTransientPanel();
+
     if (!result.textualReport.empty() &&
         ImGui::CollapsingHeader("Raw Text Report")) {
         if (ImGui::BeginChild("#raw_text_report", ImVec2(0, 180.f), true,
@@ -894,6 +940,223 @@ void UiService::drawSimulation() {
     }
 
     ImGui::End();
+}
+
+void UiService::drawTransientPanel() {
+    ImGui::Separator();
+    ImGui::TextUnformatted("Transient Analysis");
+    transientDuration = std::max(0.0f, transientDuration);
+    transientTimestep = std::max(1e-6f, transientTimestep);
+    ImGui::InputFloat("Duration (s)", &transientDuration, 0.0f, 0.0f, "%.6f");
+    ImGui::InputFloat("Step (s)", &transientTimestep, 0.0f, 0.0f, "%.6f");
+    ImGui::BeginDisabled(transientDuration <= 0.0f || transientTimestep <= 0.0f);
+    if (ImGui::Button("Run transient simulation")) {
+        circuitController.simulateTransient(transientDuration, transientTimestep);
+        selectedTransientNodeIdx = -1;
+        selectedCurrentComponentId = 0;
+    }
+    ImGui::EndDisabled();
+
+    const TransientResult& transient = circuitController.fetchTransientResult();
+    if (transient.times.empty()) {
+        ImGui::TextUnformatted("No transient samples available yet.");
+        return;
+    }
+
+    if (selectedTransientNodeIdx < 0 && !transient.nodeIds.empty()) {
+        selectedTransientNodeIdx = 0;
+    }
+
+    auto nodeLabel = [&](unsigned int nodeId) -> std::string {
+        if (nodeId == transient.referenceNodeId) {
+            return "GND";
+        }
+        return "Node " + std::to_string(nodeId);
+    };
+
+    if (!transient.nodeIds.empty()) {
+        std::string currentLabel = (selectedTransientNodeIdx >= 0 &&
+                                    selectedTransientNodeIdx < static_cast<int>(transient.nodeIds.size()))
+                                        ? nodeLabel(transient.nodeIds[static_cast<std::size_t>(selectedTransientNodeIdx)])
+                                        : "Select node";
+        if (ImGui::BeginCombo("Voltage node", currentLabel.c_str())) {
+            for (std::size_t idx = 0; idx < transient.nodeIds.size(); ++idx) {
+                bool selected = static_cast<int>(idx) == selectedTransientNodeIdx;
+                const std::string label = nodeLabel(transient.nodeIds[idx]);
+                if (ImGui::Selectable(label.c_str(), selected)) {
+                    selectedTransientNodeIdx = static_cast<int>(idx);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    auto fetchSeries = [&](unsigned int nodeId) -> const std::vector<double>* {
+        auto it = transient.nodeIndex.find(nodeId);
+        if (it == transient.nodeIndex.end()) {
+            return nullptr;
+        }
+        const std::size_t index = it->second;
+        if (index >= transient.nodeVoltages.size()) {
+            return nullptr;
+        }
+        return &transient.nodeVoltages[index];
+    };
+
+    auto plotSeries = [&](const std::vector<double>& samples, std::vector<float>& buffer, const char* label) {
+        if (samples.empty()) {
+            ImGui::TextUnformatted("No data to plot.");
+            return;
+        }
+        buffer.resize(samples.size());
+        float minVal = std::numeric_limits<float>::max();
+        float maxVal = std::numeric_limits<float>::lowest();
+        for (std::size_t i = 0; i < samples.size(); ++i) {
+            float v = static_cast<float>(samples[i]);
+            buffer[i] = v;
+            minVal = std::min(minVal, v);
+            maxVal = std::max(maxVal, v);
+        }
+        if (minVal == maxVal) {
+            maxVal += 1.0f;
+            minVal -= 1.0f;
+        }
+        ImGui::PlotLines(label,
+            buffer.data(),
+            static_cast<int>(buffer.size()),
+            0,
+            nullptr,
+            minVal,
+            maxVal,
+            ImVec2(-1, 160));
+        ImGui::Text("Samples: %zu  |  dt = %.6f s", samples.size(), transient.timestep);
+    };
+
+    if (selectedTransientNodeIdx >= 0 &&
+        selectedTransientNodeIdx < static_cast<int>(transient.nodeIds.size())) {
+        const auto& series = transient.nodeVoltages[static_cast<std::size_t>(selectedTransientNodeIdx)];
+        plotSeries(series, transientVoltageBuffer, "Voltage (V)");
+    }
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Component current");
+
+    std::vector<ComponentView> components;
+    components.reserve(circuitController.getView().getComponents().size());
+    for (const auto& [id, component] : circuitController.getView().getComponents()) {
+        if (component.type == ComponentType::Wire) {
+            continue;
+        }
+        components.push_back(component);
+    }
+    std::sort(components.begin(), components.end(), [](const ComponentView& lhs, const ComponentView& rhs) {
+        return lhs.id < rhs.id;
+    });
+
+    if (components.empty()) {
+        ImGui::TextUnformatted("Add components to view their currents over time.");
+        return;
+    }
+
+    if (selectedCurrentComponentId == 0) {
+        selectedCurrentComponentId = components.front().id;
+    }
+
+    const auto labels = circuitController.buildComponentLabels();
+    auto componentLabel = [&](const ComponentView& component) -> std::string {
+        if (auto it = labels.find(component.id); it != labels.end() && !it->second.empty()) {
+            return it->second;
+        }
+        return std::string(componentTypeName(component.type)) + " #" + std::to_string(component.id);
+    };
+
+    std::string componentCurrentLabel = "Select component";
+    if (auto comp = circuitController.getComponent(selectedCurrentComponentId)) {
+        componentCurrentLabel = componentLabel(*comp);
+    }
+
+    if (ImGui::BeginCombo("Component", componentCurrentLabel.c_str())) {
+        for (const auto& component : components) {
+            bool selected = component.id == selectedCurrentComponentId;
+            const std::string label = componentLabel(component);
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                selectedCurrentComponentId = component.id;
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    auto componentForCurrent = circuitController.getComponent(selectedCurrentComponentId);
+    if (!componentForCurrent) {
+        ImGui::TextUnformatted("Component not found.");
+        return;
+    }
+
+    const auto* vaSeries = fetchSeries(componentForCurrent->nodeA);
+    const auto* vbSeries = fetchSeries(componentForCurrent->nodeB);
+    if (!vaSeries || !vbSeries || vaSeries->size() != vbSeries->size()) {
+        ImGui::TextUnformatted("Missing voltage data for component nodes.");
+        return;
+    }
+
+    const std::size_t sampleCount = std::min(vaSeries->size(), vbSeries->size());
+    if (sampleCount == 0) {
+        ImGui::TextUnformatted("No samples to display.");
+        return;
+    }
+
+    const float componentValue = circuitController.getComponentValue(*componentForCurrent).value_or(0.f);
+    std::vector<double> currentSamples(sampleCount, 0.0);
+    bool supported = true;
+
+    switch (componentForCurrent->type) {
+        case ComponentType::Resistor:
+            if (componentValue == 0.0f) {
+                supported = false;
+                toolboxStatus = "Resistor value is zero.";
+                break;
+            }
+            for (std::size_t i = 0; i < sampleCount; ++i) {
+                const double voltage = (*vaSeries)[i] - (*vbSeries)[i];
+                currentSamples[i] = voltage / componentValue;
+            }
+            break;
+        case ComponentType::Capacitor:
+            if (componentValue == 0.0f || transient.timestep == 0.0) {
+                supported = false;
+                toolboxStatus = "Capacitor value or timestep invalid.";
+                break;
+            }
+            for (std::size_t i = 0; i < sampleCount; ++i) {
+                const double voltage = (*vaSeries)[i] - (*vbSeries)[i];
+                const double prev = i == 0 ? voltage : ((*vaSeries)[i - 1] - (*vbSeries)[i - 1]);
+                currentSamples[i] = componentValue * (voltage - prev) / transient.timestep;
+            }
+            break;
+        case ComponentType::ISource:
+            for (std::size_t i = 0; i < sampleCount; ++i) {
+                currentSamples[i] = componentValue;
+            }
+            break;
+        case ComponentType::VSource:
+            supported = false;
+            ImGui::TextUnformatted("Voltage source current plotting not supported yet.");
+            break;
+        case ComponentType::Wire:
+            supported = false;
+            ImGui::TextUnformatted("Wire currents are not tracked.");
+            break;
+    }
+
+    if (supported) {
+        plotSeries(currentSamples, transientCurrentBuffer, "Current (A)");
+    }
 }
 
 void UiService::drawPropertiesWindow() {

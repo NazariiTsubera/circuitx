@@ -152,6 +152,14 @@ void CircuitController::handleDelete(const DeleteCommand& command) {
     }
 }
 
+void CircuitController::deleteWire(const WireView& wire) {
+    if (view.removeWire(wire.startNode, wire.endNode)) {
+        service.removeComponent(ComponentType::Wire, wire.startNode, wire.endNode);
+        cleanupNode(wire.startNode);
+        cleanupNode(wire.endNode);
+    }
+}
+
 bool CircuitController::rotateComponent(unsigned int componentId, int rotationDelta) {
     auto componentOpt = view.getComponent(componentId);
     if (!componentOpt.has_value()) {
@@ -388,6 +396,10 @@ void CircuitController::simulate() {
     }
 
     simulationResult.textualReport = oss.str();
+}
+
+void CircuitController::simulateTransient(double durationSeconds, double timestepSeconds) {
+    transientResult = service.simulateTransient(durationSeconds, timestepSeconds);
 }
 
 std::optional<ComponentView> CircuitController::getComponentAt(sf::Vector2f position, float tolerance) const {

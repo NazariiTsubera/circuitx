@@ -10,6 +10,7 @@
 #include <variant>
 #include <vector>
 #include <Eigen/Core>
+#include <unordered_map>
 
 namespace circuitx {
     struct Node {
@@ -27,6 +28,16 @@ namespace circuitx {
 
     typedef std::variant<Res, Cap, VSource, ISource, Wire> Element;
 
+    struct TransientResult {
+        bool solved = false;
+        double timestep = 0.0;
+        unsigned int referenceNodeId = 0;
+        std::vector<double> times;
+        std::vector<unsigned int> nodeIds;
+        std::vector<std::vector<double>> nodeVoltages;
+        std::unordered_map<unsigned int, std::size_t> nodeIndex;
+    };
+
     class Circuit {
     public:
         Circuit() {}
@@ -36,6 +47,7 @@ namespace circuitx {
         void addElement(const Element& e) { elements.push_back(e); }
 
         Eigen::VectorXd solve();
+        TransientResult simulateTransient(double durationSeconds, double timestepSeconds);
 
         [[nodiscard]] std::vector<Element> getElements() const { return elements; }
         [[nodiscard]] std::vector<Node> getNodes() const { return nodes; }

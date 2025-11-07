@@ -75,6 +75,20 @@ public:
         }
     }
 
+    bool removeWire(unsigned int nodeA, unsigned int nodeB) {
+        auto it = std::find_if(wires.begin(),
+            wires.end(),
+            [&](const WireView& wire) {
+                return (wire.startNode == nodeA && wire.endNode == nodeB) ||
+                       (wire.startNode == nodeB && wire.endNode == nodeA);
+            });
+        if (it == wires.end()) {
+            return false;
+        }
+        wires.erase(it);
+        return true;
+    }
+
     std::optional<WireView> removeWireAtPosition(sf::Vector2f position, float tolerance = 6.f) {
         if (auto index = getWireIndexAt(position, tolerance)) {
             WireView removed = wires[*index];

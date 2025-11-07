@@ -8,6 +8,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <circuitx/circuit.hpp>
 
 #include "ComponentType.h"
 
@@ -46,5 +48,7 @@ struct SimulationResult {
         elements.clear();
     }
 };
+
+using TransientResult = circuitx::TransientResult;
 
 #endif //SIMULATIONRESULT_H

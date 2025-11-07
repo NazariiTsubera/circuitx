@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <Eigen/Dense>
 
@@ -124,6 +125,17 @@ namespace circuitx {
             }
 
             return ctx;
+        }
+
+        double voltageAtNode(const MnaContext& ctx, unsigned int nodeId, const Eigen::VectorXd& solution) {
+            if (nodeId == ctx.groundId) {
+                return 0.0;
+            }
+            const int idx = ctx.nodeEquationIndex(nodeId);
+            if (idx < 0 || idx >= solution.size()) {
+                return 0.0;
+            }
+            return solution(idx);
         }
     }
 
@@ -389,7 +401,7 @@ namespace circuitx {
     }
 
 
-    Eigen::MatrixXd Circuit::getMatrix()
+Eigen::MatrixXd Circuit::getMatrix()
     {
         if (united.empty()) {
             unify();
@@ -448,5 +460,191 @@ namespace circuitx {
         }
 
         return A;
+    }
+
+    TransientResult Circuit::simulateTransient(double durationSeconds, double timestepSeconds) {
+        TransientResult result;
+        if (durationSeconds <= 0.0 || timestepSeconds <= 0.0) {
+            return result;
+        }
+
+        unify();
+        const MnaContext ctx = buildMnaContext(united, elements);
+        cacheSolutionOrdering(ctx.indexToNodeId, ctx.voltageIndexToElement, ctx.groundId);
+
+        const int systemSize = ctx.systemSize();
+        if (systemSize == 0) {
+            return result;
+        }
+
+        Eigen::MatrixXd baseA = Eigen::MatrixXd::Zero(systemSize, systemSize);
+        Eigen::VectorXd baseZ = Eigen::VectorXd::Zero(systemSize);
+
+        struct CapacitorDescriptor {
+            unsigned int a = 0;
+            unsigned int b = 0;
+            double cap = 0.0;
+            double prevVoltage = 0.0;
+        };
+        std::vector<CapacitorDescriptor> capacitors;
+
+        for (std::size_t idx = 0; idx < elements.size(); ++idx) {
+            const auto& element = elements[idx];
+            if (const auto* res = std::get_if<Res>(&element)) {
+                if (res->res <= 0.f) {
+                    continue;
+                }
+
+                const double conductance = 1.0 / static_cast<double>(res->res);
+                const int aIdx = ctx.nodeEquationIndex(res->a);
+                const int bIdx = ctx.nodeEquationIndex(res->b);
+
+                if (aIdx >= 0) {
+                    baseA(aIdx, aIdx) += conductance;
+                }
+                if (bIdx >= 0) {
+                    baseA(bIdx, bIdx) += conductance;
+                }
+                if (aIdx >= 0 && bIdx >= 0) {
+                    baseA(aIdx, bIdx) -= conductance;
+                    baseA(bIdx, aIdx) -= conductance;
+                }
+            } else if (const auto* vsrc = std::get_if<VSource>(&element)) {
+                const int aIdx = ctx.nodeEquationIndex(vsrc->a);
+                const int bIdx = ctx.nodeEquationIndex(vsrc->b);
+                const int eqIdx = ctx.voltageEquationIndex(idx);
+
+                if (eqIdx < 0) {
+                    continue;
+                }
+
+                if (aIdx >= 0) {
+                    baseA(aIdx, eqIdx) += 1.0;
+                    baseA(eqIdx, aIdx) += 1.0;
+                }
+                if (bIdx >= 0) {
+                    baseA(bIdx, eqIdx) -= 1.0;
+                    baseA(eqIdx, bIdx) -= 1.0;
+                }
+            } else if (const auto* cap = std::get_if<Cap>(&element)) {
+                if (cap->cap > 0.0f) {
+                    capacitors.push_back(CapacitorDescriptor{
+                        cap->a,
+                        cap->b,
+                        static_cast<double>(cap->cap),
+                        0.0});
+                }
+            }
+        }
+
+        for (std::size_t idx = 0; idx < elements.size(); ++idx) {
+            const auto& element = elements[idx];
+            if (const auto* isrc = std::get_if<ISource>(&element)) {
+                const int aIdx = ctx.nodeEquationIndex(isrc->a);
+                const int bIdx = ctx.nodeEquationIndex(isrc->b);
+                const double current = static_cast<double>(isrc->cur);
+
+                if (aIdx >= 0) {
+                    baseZ(aIdx) -= current;
+                }
+                if (bIdx >= 0) {
+                    baseZ(bIdx) += current;
+                }
+            } else if (const auto* vsrc = std::get_if<VSource>(&element)) {
+                const int eqIdx = ctx.voltageEquationIndex(idx);
+                if (eqIdx >= 0) {
+                    baseZ(eqIdx) = static_cast<double>(vsrc->vol);
+                }
+            }
+        }
+
+        Eigen::VectorXd steadyState = solve();
+
+        auto initialVoltageAt = [&](unsigned int nodeId) {
+            return voltageAtNode(ctx, nodeId, steadyState);
+        };
+
+        for (auto& cap : capacitors) {
+            cap.prevVoltage = initialVoltageAt(cap.a) - initialVoltageAt(cap.b);
+        }
+
+        const int totalSteps = static_cast<int>(std::ceil(durationSeconds / timestepSeconds));
+        result.solved = true;
+        result.timestep = timestepSeconds;
+        result.referenceNodeId = ctx.groundId;
+        result.nodeIds = ctx.indexToNodeId;
+        result.nodeVoltages.clear();
+        result.nodeVoltages.resize(result.nodeIds.size());
+        for (std::size_t i = 0; i < result.nodeIds.size(); ++i) {
+            result.nodeIndex[result.nodeIds[i]] = i;
+            result.nodeVoltages[i].reserve(static_cast<std::size_t>(totalSteps) + 1);
+        }
+        // Append ground reference
+        result.nodeIndex[result.referenceNodeId] = result.nodeIds.size();
+        result.nodeIds.push_back(result.referenceNodeId);
+        result.nodeVoltages.emplace_back();
+        result.nodeVoltages.back().reserve(static_cast<std::size_t>(totalSteps) + 1);
+
+        auto recordSample = [&](const Eigen::VectorXd& solution, double time) {
+            result.times.push_back(time);
+            for (std::size_t i = 0; i < ctx.indexToNodeId.size(); ++i) {
+                const unsigned int nodeId = ctx.indexToNodeId[i];
+                const double voltage = voltageAtNode(ctx, nodeId, solution);
+                result.nodeVoltages[i].push_back(voltage);
+            }
+            // ground
+            auto groundIdx = result.nodeIndex[result.referenceNodeId];
+            if (groundIdx < result.nodeVoltages.size()) {
+                result.nodeVoltages[groundIdx].push_back(0.0);
+            }
+        };
+
+        recordSample(steadyState, 0.0);
+
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(systemSize, systemSize);
+        Eigen::VectorXd z = Eigen::VectorXd::Zero(systemSize);
+
+        Eigen::VectorXd currentSolution = steadyState;
+
+        for (int step = 1; step <= totalSteps; ++step) {
+            A = baseA;
+            z = baseZ;
+
+            for (auto& cap : capacitors) {
+                if (cap.cap <= 0.0) {
+                    continue;
+                }
+                const double geq = cap.cap / timestepSeconds;
+                const double historyCurrent = geq * cap.prevVoltage;
+
+                const int aIdx = ctx.nodeEquationIndex(cap.a);
+                const int bIdx = ctx.nodeEquationIndex(cap.b);
+
+                if (aIdx >= 0) {
+                    A(aIdx, aIdx) += geq;
+                    z(aIdx) -= historyCurrent;
+                }
+                if (bIdx >= 0) {
+                    A(bIdx, bIdx) += geq;
+                    z(bIdx) += historyCurrent;
+                }
+                if (aIdx >= 0 && bIdx >= 0) {
+                    A(aIdx, bIdx) -= geq;
+                    A(bIdx, aIdx) -= geq;
+                }
+            }
+
+            currentSolution = A.colPivHouseholderQr().solve(z);
+            const double currentTime = static_cast<double>(step) * timestepSeconds;
+            recordSample(currentSolution, currentTime);
+
+            for (auto& cap : capacitors) {
+                const double va = voltageAtNode(ctx, cap.a, currentSolution);
+                const double vb = voltageAtNode(ctx, cap.b, currentSolution);
+                cap.prevVoltage = va - vb;
+            }
+        }
+
+        return result;
     }
 }

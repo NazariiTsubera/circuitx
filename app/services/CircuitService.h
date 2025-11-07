@@ -35,6 +35,7 @@ public:
     void removeNode(unsigned int nodeId);
     std::optional<float> getComponentValue(ComponentType type, unsigned int nodeA, unsigned int nodeB) const;
     bool updateComponentValue(ComponentType type, unsigned int nodeA, unsigned int nodeB, float value);
+    circuitx::TransientResult simulateTransient(double durationSeconds, double timestepSeconds);
 
     const circuitx::Circuit& getCircuit() const { return circuit; }
     circuitx::Circuit getCircuit() { return circuit; }

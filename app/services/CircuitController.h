@@ -21,6 +21,8 @@ public:
 
     void handle(const CircuitCommand& command);
     void simulate();
+    void simulateTransient(double durationSeconds, double timestepSeconds);
+    void deleteWire(const WireView& wire);
     bool rotateComponent(unsigned int componentId, int rotationDelta);
     std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const;
     std::optional<WireView> getWireAt(sf::Vector2f position, float tolerance = 6.f) const;
@@ -36,6 +38,7 @@ public:
     const CircuitService& getService() const { return service; }
     const std::string& getTopology() const { return cachedTopology; }
     const SimulationResult& fetchSimulationResults() const { return simulationResult; }
+    const TransientResult& fetchTransientResult() const { return transientResult; }
     bool hasSelectableAt(sf::Vector2f position) const { return view.hasSelectableAt(position); }
 
 private:
@@ -54,6 +57,7 @@ private:
     const CoordinateTool& gridTool;
     std::string cachedTopology;
     SimulationResult simulationResult;
+    TransientResult transientResult;
 };
 
 #endif //CIRCUITCONTROLLER_H

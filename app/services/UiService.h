@@ -21,6 +21,13 @@ enum class UiTheme {
     White
 };
 
+enum class ToolboxSelection {
+    None,
+    Component,
+    Wire,
+    Node
+};
+
 struct PaletteComponent {
     ComponentType type;
     std::string name;
@@ -46,7 +53,6 @@ private:
     const CoordinateTool& gridTool;
     WireTool wireTool;
     CircuitController& circuitController;
-    std::optional<sf::Vector2f> contextMenuPosition;
     StateService& stateService;
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
@@ -70,9 +76,10 @@ private:
 
     float computePixelScale() const;
     std::optional<ComponentView> propertiesComponent;
-    std::optional<ComponentView> contextMenuComponent;
-    std::optional<WireView> contextMenuWire;
+    ToolboxSelection selectionKind = ToolboxSelection::None;
     std::optional<unsigned int> selectedComponentId;
+    std::optional<WireView> selectedWire;
+    std::optional<unsigned int> selectedNodeId;
     bool showPropertiesWindow = false;
     float propertiesValue = 0.f;
     std::string propertiesStatus;
@@ -82,9 +89,16 @@ private:
     bool toolboxHovered = false;
     UiTheme currentTheme = UiTheme::Black;
     State lastNonSettingsState = State::Edit;
+    float transientDuration = 0.01f;
+    float transientTimestep = 0.0001f;
+    int selectedTransientNodeIdx = -1;
+    unsigned int selectedCurrentComponentId = 0;
+    std::vector<float> transientVoltageBuffer;
+    std::vector<float> transientCurrentBuffer;
 
     void applyTheme(UiTheme theme);
     void drawSettingsWindow();
+    void drawTransientPanel();
 };
 
 

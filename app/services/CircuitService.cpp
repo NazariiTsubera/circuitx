@@ -190,3 +190,7 @@ bool CircuitService::updateComponentValue(ComponentType type, unsigned int nodeA
 
     return false;
 }
+
+circuitx::TransientResult CircuitService::simulateTransient(double durationSeconds, double timestepSeconds) {
+    return circuit.simulateTransient(durationSeconds, timestepSeconds);
+}
