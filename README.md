@@ -63,6 +63,8 @@ Use the palette to drag components onto the canvas, wire them up, and run simula
 4. Keep UI changes modular – prefer adding new panels/services rather than inflating existing ones.
 5. Submit a PR referencing any related issues.
 
+More details and screenshots are also available on my project page: [nazariitsubera.com/projects/circuit-x](https://nazariitsubera.com/projects/circuit-x).
+
 ## License
 
 See [LICENSE](LICENSE) for details.
