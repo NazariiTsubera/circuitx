@@ -45,6 +45,16 @@ After building, the primary executable (`app`) lives under `build/`. Launch it t
 
 Use the palette to drag components onto the canvas, wire them up, and run simulations via the control panel.
 
+## Screenshots
+
+| Palette & Canvas | Simulation Panels |
+| --- | --- |
+| ![Palette](pics/pic1.png) | ![Simulation](pics/pic2.png) |
+
+| Transient Plots | Properties/Toolbox |
+| --- | --- |
+| ![Transient](pics/pic3.png) | ![Toolbox](pics/pic4.png) |
+
 ## Contributing
 
 1. Fork and clone the repository.
