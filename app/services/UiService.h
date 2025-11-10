@@ -15,23 +15,15 @@
 #include "../helpers/AssetManager.hpp"
 #include "../ui/CanvasPanel.h"
 #include "../ui/UiState.h"
+#include "../ui/panels/ControlPanel.h"
+#include "../ui/panels/PalettePanel.h"
+#include "../ui/panels/PropertiesPanel.h"
+#include "../ui/panels/SettingsPanel.h"
+#include "../ui/panels/SimulationPanel.h"
+#include "../ui/panels/ToolboxPanel.h"
+#include "../ui/panels/TopologyPanel.h"
 #include "SFML/Graphics/RenderTexture.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
-
-
-
-struct PaletteComponent {
-    ComponentType type;
-    std::string name;
-    sf::Texture texture;
-};
-
-struct StateOptions {
-    State state;
-    std::string name;
-    sf::Texture texture;
-};
-
 
 class UiService {
 private:
@@ -40,8 +32,6 @@ private:
     Visualizer& visualizer;
     AssetManager& assetManager;
     sf::Vector2f canvasSize;
-    std::vector<PaletteComponent> components;
-    std::vector<StateOptions> states;
     const CoordinateTool& gridTool;
     WireTool wireTool;
     CircuitController& circuitController;
@@ -50,6 +40,13 @@ private:
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
     UiState uiState;
     CanvasPanel canvasPanel;
+    PalettePanel palettePanel;
+    ToolboxPanel toolboxPanel;
+    ControlPanel controlPanel;
+    SimulationPanel simulationPanel;
+    SettingsPanel settingsPanel;
+    PropertiesPanel propertiesPanel;
+    TopologyPanel topologyPanel;
 public:
     UiService(sf::RenderWindow& window, Visualizer& visualizer,
             AssetManager& assetManager, const CoordinateTool& gridTool,
@@ -60,19 +57,9 @@ public:
     void setResizeCallback(std::function<void(const sf::Vector2f& newSize)>&& callback) { resizeCallback = std::move(callback); }
     sf::Vector2f getCanvasSize() const { return canvasSize; }
 private:
-    void drawCanvas();
-    void drawPalette();
-    void drawToolbox();
-    void drawTopology();
-    void drawControlPanel();
-    void drawSimulation();
-    void drawPropertiesWindow();
-
     float computePixelScale() const;
 
     void applyTheme(UiTheme theme);
-    void drawSettingsWindow();
-    void drawTransientPanel();
 };
 
 

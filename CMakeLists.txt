@@ -84,9 +84,24 @@ add_executable(app
         app/core/CircuitEditor.h
         app/core/CircuitSimulator.cpp
         app/core/CircuitSimulator.h
+        app/ui/UiCommon.h
         app/ui/CanvasPanel.cpp
         app/ui/CanvasPanel.h
         app/ui/UiState.h
+        app/ui/panels/PalettePanel.cpp
+        app/ui/panels/PalettePanel.h
+        app/ui/panels/ToolboxPanel.cpp
+        app/ui/panels/ToolboxPanel.h
+        app/ui/panels/ControlPanel.cpp
+        app/ui/panels/ControlPanel.h
+        app/ui/panels/SimulationPanel.cpp
+        app/ui/panels/SimulationPanel.h
+        app/ui/panels/SettingsPanel.cpp
+        app/ui/panels/SettingsPanel.h
+        app/ui/panels/PropertiesPanel.cpp
+        app/ui/panels/PropertiesPanel.h
+        app/ui/panels/TopologyPanel.cpp
+        app/ui/panels/TopologyPanel.h
         app/services/Visualizer.cpp
         app/services/Visualizer.h
         app/services/UiService.cpp
