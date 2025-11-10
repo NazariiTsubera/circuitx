@@ -13,20 +13,12 @@
 #include "StateService.h"
 #include "Visualizer.h"
 #include "../helpers/AssetManager.hpp"
+#include "../ui/CanvasPanel.h"
+#include "../ui/UiState.h"
 #include "SFML/Graphics/RenderTexture.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
 
-enum class UiTheme {
-    Black,
-    White
-};
 
-enum class ToolboxSelection {
-    None,
-    Component,
-    Wire,
-    Node
-};
 
 struct PaletteComponent {
     ComponentType type;
@@ -56,6 +48,8 @@ private:
     StateService& stateService;
     //callbacks
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
+    UiState uiState;
+    CanvasPanel canvasPanel;
 public:
     UiService(sf::RenderWindow& window, Visualizer& visualizer,
             AssetManager& assetManager, const CoordinateTool& gridTool,
@@ -75,26 +69,6 @@ private:
     void drawPropertiesWindow();
 
     float computePixelScale() const;
-    std::optional<ComponentView> propertiesComponent;
-    ToolboxSelection selectionKind = ToolboxSelection::None;
-    std::optional<unsigned int> selectedComponentId;
-    std::optional<WireView> selectedWire;
-    std::optional<unsigned int> selectedNodeId;
-    bool showPropertiesWindow = false;
-    float propertiesValue = 0.f;
-    std::string propertiesStatus;
-    std::string toolboxStatus;
-    int placementRotationSteps = 0;
-    bool toolboxVisible = false;
-    bool toolboxHovered = false;
-    UiTheme currentTheme = UiTheme::Black;
-    State lastNonSettingsState = State::Edit;
-    float transientDuration = 0.01f;
-    float transientTimestep = 0.0001f;
-    int selectedTransientNodeIdx = -1;
-    unsigned int selectedCurrentComponentId = 0;
-    std::vector<float> transientVoltageBuffer;
-    std::vector<float> transientCurrentBuffer;
 
     void applyTheme(UiTheme theme);
     void drawSettingsWindow();

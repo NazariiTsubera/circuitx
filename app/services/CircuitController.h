@@ -5,15 +5,8 @@
 #ifndef CIRCUITCONTROLLER_H
 #define CIRCUITCONTROLLER_H
 
-#include "CircuitService.h"
-#include "CircuitView.h"
-#include "SimulationResult.h"
-#include "../helpers/CoordinateTool.hpp"
-
-#include <optional>
-#include <string>
-#include <vector>
-#include <unordered_map>
+#include "../core/CircuitEditor.h"
+#include "../core/CircuitSimulator.h"
 
 class CircuitController {
 public:
@@ -22,42 +15,31 @@ public:
     void handle(const CircuitCommand& command);
     void simulate();
     void simulateTransient(double durationSeconds, double timestepSeconds);
-    void deleteWire(const WireView& wire);
-    bool rotateComponent(unsigned int componentId, int rotationDelta);
-    std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const;
-    std::optional<WireView> getWireAt(sf::Vector2f position, float tolerance = 6.f) const;
-    std::optional<float> getComponentValue(const ComponentView& component) const;
-    bool updateComponentValue(const ComponentView& component, float newValue);
-    void refreshTopologyCache();
-    std::unordered_map<unsigned int, std::string> buildComponentLabels() const;
-    std::optional<ComponentView> getComponent(unsigned int componentId) const { return view.getComponent(componentId); }
 
-    CircuitView& getView() { return view; }
-    const CircuitView& getView() const { return view; }
+    void deleteWire(const WireView& wire) { editor.deleteWire(wire); }
+    bool rotateComponent(unsigned int componentId, int rotationDelta) { return editor.rotateComponent(componentId, rotationDelta); }
+    std::optional<ComponentView> getComponentAt(sf::Vector2f position, float tolerance = 6.f) const { return editor.getComponentAt(position, tolerance); }
+    std::optional<WireView> getWireAt(sf::Vector2f position, float tolerance = 6.f) const { return editor.getWireAt(position, tolerance); }
+    std::optional<float> getComponentValue(const ComponentView& component) const { return editor.getComponentValue(component); }
+    bool updateComponentValue(const ComponentView& component, float newValue) { return editor.updateComponentValue(component, newValue); }
+    void refreshTopologyCache() { editor.refreshTopology(); }
+    std::unordered_map<unsigned int, std::string> buildComponentLabels() const { return editor.buildComponentLabels(); }
+    std::optional<ComponentView> getComponent(unsigned int componentId) const { return editor.getComponent(componentId); }
 
-    const CircuitService& getService() const { return service; }
-    const std::string& getTopology() const { return cachedTopology; }
-    const SimulationResult& fetchSimulationResults() const { return simulationResult; }
-    const TransientResult& fetchTransientResult() const { return transientResult; }
-    bool hasSelectableAt(sf::Vector2f position) const { return view.hasSelectableAt(position); }
+    CircuitView& getView() { return editor.getView(); }
+    const CircuitView& getView() const { return editor.getView(); }
 
-private:
-    void handleWire(const AddWireCommand& command);
-    void handleComponent(const AddComponentCommand& command);
-    void handleDelete(const DeleteCommand& command);
+    CircuitService& getService() { return editor.getService(); }
+    const CircuitService& getService() const { return editor.getService(); }
 
-    unsigned int ensureNodeAt(sf::Vector2f position);
-    void addWireSegments(const std::vector<std::pair<unsigned int, sf::Vector2f>>& orderedNodes);
-    void cleanupNode(unsigned int nodeId);
-
+    const std::string& getTopology() const { return editor.topology(); }
+    const SimulationResult& fetchSimulationResults() const { return simulator.dcResult(); }
+    const TransientResult& fetchTransientResult() const { return simulator.transientResult(); }
+    bool hasSelectableAt(sf::Vector2f position) const { return editor.hasSelectableAt(position); }
 
 private:
-    CircuitService& service;
-    CircuitView& view;
-    const CoordinateTool& gridTool;
-    std::string cachedTopology;
-    SimulationResult simulationResult;
-    TransientResult transientResult;
+    CircuitEditor editor;
+    CircuitSimulator simulator;
 };
 
 #endif //CIRCUITCONTROLLER_H

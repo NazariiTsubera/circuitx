@@ -20,13 +20,13 @@ private:
     sf::Clock clock;
     GridSettings gridSettings {20};
     CoordinateTool gridTool;
+    StateService stateService;
     CircuitService circuitService;
     CircuitView circuitView;
     CircuitController circuitController;
     AssetManager assetManager;
     Visualizer visualizer;
     UiService uiService;
-    StateService stateService;
 public:
     Application();
     ~Application();

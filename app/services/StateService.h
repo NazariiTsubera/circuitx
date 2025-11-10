@@ -5,6 +5,8 @@
 #ifndef STATESERVICE_H
 #define STATESERVICE_H
 
+#include <functional>
+#include <vector>
 
 enum State {
     Play,

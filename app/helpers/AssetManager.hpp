@@ -5,6 +5,7 @@
 #ifndef ASSETMANAGER_H
 #define ASSETMANAGER_H
 #include <iostream>
+#include <string>
 #include <unordered_map>
 
 #include "SFML/Graphics/Texture.hpp"

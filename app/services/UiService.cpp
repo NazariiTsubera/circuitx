@@ -157,10 +157,12 @@ void applyWhiteStyle() {
 }
 }
 
-UiService::UiService(
-        sf::RenderWindow& window, Visualizer& visualizer,
-        AssetManager& assetManager, const CoordinateTool& gridTool,
-        CircuitController& circuitController, StateService& stateService)
+UiService::UiService(sf::RenderWindow& window,
+    Visualizer& visualizer,
+    AssetManager& assetManager,
+    const CoordinateTool& gridTool,
+    CircuitController& circuitController,
+    StateService& stateService)
     : window(window),
       visualizer(visualizer),
       assetManager(assetManager),
@@ -168,7 +170,8 @@ UiService::UiService(
       gridTool(gridTool),
       wireTool(gridTool),
       circuitController(circuitController),
-      stateService(stateService)
+      stateService(stateService),
+      canvasPanel(visualizer, circuitController, gridTool, wireTool, stateService)
 {
 
     const bool imguiInitialized = ImGui::SFML::Init(window);
@@ -183,10 +186,10 @@ UiService::UiService(
     states.push_back({State::Pause, "Pause", assetManager.getTexture("pause")});
     states.push_back({State::Settings, "Settings", assetManager.getTexture("gear")});
 
-    lastNonSettingsState = stateService.getCurrentState();
+    uiState.lastNonSettingsState = stateService.getCurrentState();
     stateService.addCallback([this](State /*prev*/, State next) {
         if (next != State::Settings) {
-            lastNonSettingsState = next;
+            uiState.lastNonSettingsState = next;
         }
     });
 
@@ -197,7 +200,7 @@ UiService::UiService(
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
-    applyTheme(currentTheme);
+    applyTheme(uiState.theme);
 
     const float pixelScale = computePixelScale();
     if (pixelScale > 1.0f) {
@@ -222,7 +225,7 @@ UiService::~UiService() {
 }
 
 void UiService::applyTheme(UiTheme theme) {
-    currentTheme = theme;
+    uiState.theme = theme;
     if (theme == UiTheme::Black) {
         applyBlackStyle();
         visualizer.setTheme(VisualizerTheme::Dark);
@@ -234,307 +237,9 @@ void UiService::applyTheme(UiTheme theme) {
 
 
 void UiService::drawCanvas() {
-
-    ImGui::Begin("Canvas");
-
-    if (ImGui::BeginChild("canvas_child", ImVec2(0,0), ImGuiChildFlags_None,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-        ImVec2 availableSize = ImGui::GetContentRegionAvail();
-
-        if (availableSize.x != canvasSize.x || availableSize.y != canvasSize.y) {
-            canvasSize = {availableSize.x, availableSize.y};
-            canvasTexture.create(static_cast<unsigned int>(canvasSize.x), static_cast<unsigned int>(canvasSize.y));
-
-            sf::View view;
-            view.setSize(canvasSize.x, -canvasSize.y);
-            view.setCenter(canvasSize.x / 2.f, canvasSize.y / 2.f);
-
-            canvasTexture.setView(view);
-
-            if (resizeCallback) {
-                resizeCallback(canvasSize);
-            }
-        }
-
-
-
-        canvasTexture.clear();
-        std::optional<WirePreview> preview;
-
-        if (wireTool.isActive()) {
-            preview = wireTool.getPreview();
-        }
-
-        visualizer.draw(canvasTexture, preview);
-        canvasTexture.display();
-
-
-        // in order to make button overlay
-        ImVec2 screenPos = ImGui::GetCursorScreenPos();
-        const sf::Vector2f canvasOrigin{screenPos.x, screenPos.y};
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-        ImGui::InvisibleButton("#inv_button", availableSize);
-        ImGui::PopStyleVar();
-        ImGui::SetCursorScreenPos(screenPos);
-
-        auto clearSelection = [&]() {
-            selectedComponentId.reset();
-            selectedWire.reset();
-            selectedNodeId.reset();
-            selectionKind = ToolboxSelection::None;
-            toolboxVisible = false;
-            toolboxStatus.clear();
-        };
-
-        auto selectComponent = [&](const ComponentView& comp) {
-            selectedComponentId = comp.id;
-            selectedWire.reset();
-            selectedNodeId.reset();
-            selectionKind = ToolboxSelection::Component;
-        };
-
-        auto selectWire = [&](const WireView& wire) {
-            selectedWire = wire;
-            selectedComponentId.reset();
-            selectedNodeId.reset();
-            selectionKind = ToolboxSelection::Wire;
-        };
-
-        auto selectNode = [&](unsigned int nodeId) {
-            selectedNodeId = nodeId;
-            selectedComponentId.reset();
-            selectedWire.reset();
-            selectionKind = ToolboxSelection::Node;
-        };
-
-        auto openToolbox = [&]() {
-            if (selectionKind == ToolboxSelection::None) {
-                toolboxVisible = false;
-                return;
-            }
-            toolboxVisible = true;
-            toolboxStatus.clear();
-        };
-
-        //Events
-        {
-            const ImVec2 mousePosIm = ImGui::GetMousePos();
-            const sf::Vector2f mousePos = toVector(mousePosIm);
-            const sf::Vector2f localMousePos = {mousePos.x - canvasOrigin.x, mousePos.y - canvasOrigin.y};
-
-            const auto componentUnderCursor = circuitController.getComponentAt(localMousePos);
-            const auto wireUnderCursor = circuitController.getWireAt(localMousePos);
-            const auto nodeUnderCursor = circuitController.getView().getNodeNear(localMousePos);
-
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                if (componentUnderCursor) {
-                    selectComponent(*componentUnderCursor);
-                    openToolbox();
-                } else if (wireUnderCursor) {
-                    selectWire(*wireUnderCursor);
-                    openToolbox();
-                } else if (nodeUnderCursor) {
-                    selectNode(*nodeUnderCursor);
-                    openToolbox();
-                } else {
-                    clearSelection();
-                }
-            }
-
-            if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PALETTE_COMPONENT")) {
-                    const auto type = *static_cast<const ComponentType*>(payload->Data);
-                    const sf::Vector2f snapped = gridTool.snapToGrid(localMousePos);
-                    circuitController.handle(AddComponentCommand{snapped, type, placementRotationSteps});
-                }
-
-                ImGui::EndDragDropTarget();
-            }
-
-            const bool canvasActive = ImGui::IsItemActive();
-
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-                if (componentUnderCursor) {
-                    selectComponent(*componentUnderCursor);
-                    toolboxVisible = false;
-                } else if (wireUnderCursor) {
-                    selectWire(*wireUnderCursor);
-                    toolboxVisible = false;
-                } else if (nodeUnderCursor) {
-                    selectNode(*nodeUnderCursor);
-                    toolboxVisible = false;
-                } else {
-                    clearSelection();
-                }
-                wireTool.begin(localMousePos);
-            }
-
-            if (canvasActive && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && wireTool.isActive()) {
-                wireTool.update(localMousePos);
-            }
-
-            if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                if (wireTool.isActive()) {
-                    const sf::Vector2f origin = wireTool.getOrigin();
-                    const sf::Vector2f destination = wireTool.getDestination();
-                    wireTool.end();
-                    circuitController.handle(AddWireCommand{origin, destination});
-                }
-            }
-        }
-
-
-        ImGui::Image(canvasTexture.getTexture());
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const auto labelMap = circuitController.buildComponentLabels();
-        const SimulationResult& simResult = circuitController.fetchSimulationResults();
-        std::optional<ComponentView> selectedComponent;
-        if (selectedComponentId) {
-            selectedComponent = circuitController.getComponent(*selectedComponentId);
-            if (!selectedComponent) {
-                selectedComponentId.reset();
-            }
-        }
-        const bool showSimOverlays = simResult.solved && stateService.getCurrentState() != State::Edit;
-        const bool darkTheme = currentTheme == UiTheme::Black;
-
-        auto formatValue = [] (double value) {
-            std::ostringstream ss;
-            ss.setf(std::ios::fixed, std::ios::floatfield);
-            ss.precision(3);
-            ss << value;
-            return ss.str();
-        };
-
-        std::vector<ComponentView> drawableComponents;
-        drawableComponents.reserve(circuitController.getView().getComponents().size());
-        for (const auto& [componentId, component] : circuitController.getView().getComponents()) {
-            if (component.type == ComponentType::Wire) {
-                continue;
-            }
-            drawableComponents.push_back(component);
-        }
-        std::sort(drawableComponents.begin(), drawableComponents.end(), [](const ComponentView& lhs, const ComponentView& rhs) {
-            return lhs.id < rhs.id;
-        });
-
-        std::unordered_map<unsigned int, double> nodeVoltages;
-        std::unordered_map<unsigned int, std::string> nodeNames;
-        std::unordered_map<std::string, const SimulationElementResult*> elementByLabel;
-
-        if (simResult.solved) {
-            nodeVoltages.reserve(simResult.nodes.size() + 1);
-            nodeNames.reserve(simResult.nodes.size() + 1);
-            for (const auto& node : simResult.nodes) {
-                nodeVoltages[node.id] = node.voltage;
-                nodeNames[node.id] = node.name;
-            }
-            nodeVoltages[simResult.referenceNodeId] = 0.0;
-            nodeNames[simResult.referenceNodeId] = simResult.referenceNodeName;
-
-            elementByLabel.reserve(simResult.elements.size());
-            for (const auto& element : simResult.elements) {
-                elementByLabel.emplace(element.label, &element);
-            }
-        }
-
-        if (showSimOverlays) {
-            for (const auto& [nodeId, position] : circuitController.getView().getNodes()) {
-                const auto voltageIt = nodeVoltages.find(nodeId);
-                const auto nameIt = nodeNames.find(nodeId);
-                if (voltageIt == nodeVoltages.end() || nameIt == nodeNames.end()) {
-                    continue;
-                }
-                const bool highlightNode = selectedComponent &&
-                    (selectedComponent->nodeA == nodeId || selectedComponent->nodeB == nodeId);
-                std::string nodeText = nameIt->second + ": " + formatValue(voltageIt->second) + " V";
-                const ImVec2 center{canvasOrigin.x + position.x, canvasOrigin.y + position.y};
-                const ImVec2 textSize = ImGui::CalcTextSize(nodeText.c_str());
-                const float verticalOffset = 26.f;
-                const ImVec2 textPos{center.x - textSize.x * 0.5f, center.y - verticalOffset - textSize.y};
-                const ImVec2 padding{4.f, 2.f};
-                const ImVec2 bgMin{textPos.x - padding.x, textPos.y - padding.y};
-                const ImVec2 bgMax{textPos.x + textSize.x + padding.x, textPos.y + textSize.y + padding.y};
-                const ImU32 nodeBgHighlight = darkTheme ? IM_COL32(36, 66, 102, 235) : IM_COL32(214, 234, 255, 235);
-                const ImU32 nodeBgNormal = darkTheme ? IM_COL32(32, 36, 46, 230) : IM_COL32(255, 255, 255, 230);
-                const ImU32 nodeBorderHighlight = darkTheme ? IM_COL32(116, 170, 230, 255) : IM_COL32(150, 185, 232, 255);
-                const ImU32 nodeBorderNormal = darkTheme ? IM_COL32(70, 77, 95, 230) : IM_COL32(214, 218, 228, 230);
-                const ImU32 bgColor = highlightNode ? nodeBgHighlight : nodeBgNormal;
-                const ImU32 borderColor = highlightNode ? nodeBorderHighlight : nodeBorderNormal;
-                drawList->AddRectFilled(bgMin, bgMax, bgColor);
-                drawList->AddRect(bgMin, bgMax, borderColor);
-                const ImU32 nodeTextColor = darkTheme ? IM_COL32(245, 247, 255, 255) : IM_COL32(30, 34, 44, 255);
-                drawList->AddText(textPos, nodeTextColor, nodeText.c_str());
-            }
-        }
-
-        for (const auto& component : drawableComponents) {
-            auto it = labelMap.find(component.id);
-            if (it == labelMap.end()) {
-                continue;
-            }
-            const bool componentSelected = selectedComponent && selectedComponent->id == component.id;
-            std::vector<std::string> lines;
-            lines.push_back(it->second);
-            if (showSimOverlays) {
-                if (auto elemIt = elementByLabel.find(it->second); elemIt != elementByLabel.end() && elemIt->second) {
-                    const SimulationElementResult& elem = *elemIt->second;
-                    lines.push_back("dV = " + formatValue(elem.voltageDrop) + " V");
-                    if (elem.current.has_value()) {
-                        lines.push_back("I = " + formatValue(elem.current.value()) + " A");
-                    }
-                }
-            }
-
-            float maxWidth = 0.f;
-            float totalHeight = 0.f;
-            std::vector<ImVec2> lineSizes;
-            lineSizes.reserve(lines.size());
-            for (const auto& line : lines) {
-                ImVec2 size = ImGui::CalcTextSize(line.c_str());
-                lineSizes.push_back(size);
-                maxWidth = std::max(maxWidth, size.x);
-                totalHeight += size.y;
-            }
-            const float lineSpacing = 2.f;
-            if (lines.size() > 1) {
-                totalHeight += lineSpacing * static_cast<float>(lines.size() - 1);
-            }
-
-            const ImVec2 center{canvasOrigin.x + component.position.x, canvasOrigin.y + component.position.y};
-            const ImVec2 blockSize{maxWidth, totalHeight};
-            const float verticalOffset = 32.f;
-            const ImVec2 textOrigin{center.x - blockSize.x * 0.5f, center.y - verticalOffset};
-            const ImVec2 padding{6.f, 3.f};
-            const ImVec2 bgMin{textOrigin.x - padding.x, textOrigin.y - padding.y};
-            const ImVec2 bgMax{textOrigin.x + blockSize.x + padding.x, textOrigin.y + blockSize.y + padding.y};
-
-            const ImU32 compBgSelected = darkTheme ? IM_COL32(40, 75, 116, 235) : IM_COL32(220, 236, 255, 235);
-            const ImU32 compBgNormal = darkTheme ? IM_COL32(34, 38, 48, 235) : IM_COL32(250, 251, 253, 235);
-            const ImU32 compBorderSelected = darkTheme ? IM_COL32(138, 182, 233, 230) : IM_COL32(150, 182, 230, 230);
-            const ImU32 compBorderNormal = darkTheme ? IM_COL32(70, 76, 96, 220) : IM_COL32(210, 214, 226, 220);
-            const ImU32 compBgColor = componentSelected ? compBgSelected : compBgNormal;
-            const ImU32 compBorderColor = componentSelected ? compBorderSelected : compBorderNormal;
-
-            drawList->AddRectFilled(bgMin, bgMax, compBgColor);
-            drawList->AddRect(bgMin, bgMax, compBorderColor);
-
-            float cursorY = textOrigin.y;
-            for (std::size_t i = 0; i < lines.size(); ++i) {
-                const ImVec2 size = lineSizes[i];
-                const float cursorX = center.x - size.x * 0.5f;
-                const ImU32 compTextColor = darkTheme ? IM_COL32(245, 247, 255, 255) : IM_COL32(32, 36, 46, 255);
-                drawList->AddText(ImVec2(cursorX, cursorY), compTextColor, lines[i].c_str());
-                cursorY += size.y + lineSpacing;
-            }
-        }
-    }
-    ImGui::EndChild();
-    ImGui::End();
+    canvasPanel.draw(uiState, canvasTexture, canvasSize, resizeCallback);
 }
+
 
 void UiService::drawPalette() {
     ImGui::Begin("Palette");
@@ -555,7 +260,7 @@ void UiService::drawPalette() {
         const ImVec2 cursorAfter = ImGui::GetCursorPos();
         const bool hovered = ImGui::IsItemHovered();
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const bool darkTheme = currentTheme == UiTheme::Black;
+        const bool darkTheme = uiState.theme == UiTheme::Black;
         const ImU32 baseColor = darkTheme ? IM_COL32(48, 52, 66, 255) : IM_COL32(235, 237, 243, 255);
         const ImU32 hoverColor = darkTheme ? IM_COL32(64, 70, 88, 255) : IM_COL32(223, 227, 238, 255);
         const ImU32 borderColor = darkTheme ? IM_COL32(112, 122, 150, 255) : IM_COL32(194, 199, 213, 255);
@@ -593,59 +298,60 @@ void UiService::drawPalette() {
 }
 
 void UiService::drawToolbox() {
-    if (!toolboxVisible) {
-        toolboxHovered = false;
+    auto& selection = uiState.selection;
+    auto& properties = uiState.properties;
+
+    if (!selection.toolboxVisible) {
+        selection.toolboxHovered = false;
         return;
     }
 
-    if (!toolboxVisible || selectionKind == ToolboxSelection::None) {
-        toolboxHovered = false;
+    if (selection.selectionKind == ToolboxSelection::None) {
+        selection.toolboxHovered = false;
+        selection.toolboxVisible = false;
         return;
     }
-    bool open = toolboxVisible;
+
+    bool open = selection.toolboxVisible;
     if (!ImGui::Begin("Toolbox", &open)) {
-        toolboxHovered = false;
+        selection.toolboxHovered = false;
         ImGui::End();
-        toolboxVisible = open;
+        selection.toolboxVisible = open;
         return;
     }
 
-    toolboxHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup |
-                                            ImGuiHoveredFlags_ChildWindows);
+    selection.toolboxHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+        ImGuiHoveredFlags_ChildWindows);
 
     auto clearSelection = [&]() {
-        selectionKind = ToolboxSelection::None;
-        selectedComponentId.reset();
-        selectedWire.reset();
-        selectedNodeId.reset();
-        toolboxVisible = false;
+        selection.clear();
     };
 
     auto deleteAtPosition = [&](const sf::Vector2f& position) {
         const sf::Vector2f snapped = gridTool.snapToGrid(position);
         circuitController.handle(DeleteCommand{snapped});
-        toolboxStatus = "Element deleted.";
-        if (propertiesComponent) {
-            showPropertiesWindow = false;
-            propertiesComponent.reset();
-            propertiesStatus.clear();
+        selection.status = "Element deleted.";
+        if (properties.component) {
+            properties.showWindow = false;
+            properties.component.reset();
+            properties.status.clear();
         }
         clearSelection();
     };
 
-    ImGui::Text("Placement orientation: %s", rotationStepsName(placementRotationSteps));
+    ImGui::Text("Placement orientation: %s", rotationStepsName(uiState.placementRotationSteps));
     if (ImGui::Button("Rotate placement CCW")) {
-        placementRotationSteps = normalizeRotationSteps(placementRotationSteps - 1);
+        uiState.placementRotationSteps = normalizeRotationSteps(uiState.placementRotationSteps - 1);
     }
     ImGui::SameLine();
     if (ImGui::Button("Rotate placement CW")) {
-        placementRotationSteps = normalizeRotationSteps(placementRotationSteps + 1);
+        uiState.placementRotationSteps = normalizeRotationSteps(uiState.placementRotationSteps + 1);
     }
 
     ImGui::Separator();
 
-    if (selectionKind == ToolboxSelection::Component && selectedComponentId) {
-        if (auto selectedComponent = circuitController.getComponent(*selectedComponentId)) {
+    if (selection.selectionKind == ToolboxSelection::Component && selection.selectedComponentId) {
+        if (auto selectedComponent = circuitController.getComponent(*selection.selectedComponentId)) {
             const auto labels = circuitController.buildComponentLabels();
             std::string label;
             if (auto it = labels.find(selectedComponent->id); it != labels.end()) {
@@ -659,55 +365,56 @@ void UiService::drawToolbox() {
 
             if (ImGui::Button("Rotate CCW")) {
                 if (circuitController.rotateComponent(selectedComponent->id, -1)) {
-                    toolboxStatus = "Component rotated counter-clockwise.";
+                    selection.status = "Component rotated counter-clockwise.";
                 } else {
-                    toolboxStatus = "Failed to rotate component.";
+                    selection.status = "Failed to rotate component.";
                 }
             }
             ImGui::SameLine();
             if (ImGui::Button("Rotate CW")) {
                 if (circuitController.rotateComponent(selectedComponent->id, 1)) {
-                    toolboxStatus = "Component rotated clockwise.";
+                    selection.status = "Component rotated clockwise.";
                 } else {
-                    toolboxStatus = "Failed to rotate component.";
+                    selection.status = "Failed to rotate component.";
                 }
             }
 
             if (componentHasEditableValue(selectedComponent->type)) {
                 if (ImGui::Button("Edit Value")) {
                     if (auto current = circuitController.getComponentValue(*selectedComponent)) {
-                        propertiesValue = *current;
-                        propertiesStatus.clear();
+                        properties.value = *current;
+                        properties.status.clear();
                     } else {
-                        propertiesValue = 0.f;
-                        propertiesStatus = "Unable to read current value.";
+                        properties.value = 0.f;
+                        properties.status = "Unable to read current value.";
                     }
-                    propertiesComponent = selectedComponent;
-                    showPropertiesWindow = true;
+                    properties.component = selectedComponent;
+                    properties.showWindow = true;
                 }
             }
 
             if (ImGui::Button("Delete Component")) {
                 deleteAtPosition(selectedComponent->position);
                 ImGui::End();
-                toolboxHovered = false;
+                selection.toolboxHovered = false;
                 return;
             }
         } else {
             clearSelection();
         }
-    } else if (selectionKind == ToolboxSelection::Wire && selectedWire) {
-        ImGui::Text("Wire: %u -> %u", selectedWire->startNode, selectedWire->endNode);
+    } else if (selection.selectionKind == ToolboxSelection::Wire && selection.selectedWire) {
+        ImGui::Text("Wire: %u -> %u", selection.selectedWire->startNode, selection.selectedWire->endNode);
         if (ImGui::Button("Delete Wire")) {
-            circuitController.deleteWire(*selectedWire);
+            circuitController.deleteWire(*selection.selectedWire);
+            circuitController.getTopology();
             clearSelection();
             ImGui::End();
-            toolboxHovered = false;
+            selection.toolboxHovered = false;
             return;
         }
-    } else if (selectionKind == ToolboxSelection::Node && selectedNodeId) {
-        const auto nodePos = circuitController.getView().getNodePosition(*selectedNodeId);
-        ImGui::Text("Node: %u", *selectedNodeId);
+    } else if (selection.selectionKind == ToolboxSelection::Node && selection.selectedNodeId) {
+        const auto nodePos = circuitController.getView().getNodePosition(*selection.selectedNodeId);
+        ImGui::Text("Node: %u", *selection.selectedNodeId);
         if (nodePos) {
             ImGui::Text("Position: (%.1f, %.1f)", nodePos->x, nodePos->y);
         }
@@ -715,25 +422,26 @@ void UiService::drawToolbox() {
         if (ImGui::Button("Deselect")) {
             clearSelection();
             ImGui::End();
-            toolboxHovered = false;
+            selection.toolboxHovered = false;
             return;
         }
     } else {
         ImGui::TextUnformatted("Select an element, wire, or node to inspect.");
     }
 
-    if (!toolboxStatus.empty()) {
+    if (!selection.status.empty()) {
         ImGui::Separator();
-        ImGui::TextUnformatted(toolboxStatus.c_str());
+        ImGui::TextUnformatted(selection.status.c_str());
     }
 
     ImGui::End();
     if (!open) {
         clearSelection();
     } else {
-        toolboxVisible = true;
+        selection.toolboxVisible = true;
     }
 }
+
 
 void UiService::drawControlPanel() {
     ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 190.f), ImVec2(FLT_MAX, 190.f));
@@ -746,7 +454,7 @@ void UiService::drawControlPanel() {
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.f, 0.f));
 
     State currentState = stateService.getCurrentState();
-    const bool darkTheme = currentTheme == UiTheme::Black;
+    const bool darkTheme = uiState.theme == UiTheme::Black;
     bool first = true;
     for (auto& state : states) {
         if (!first) {
@@ -813,16 +521,16 @@ void UiService::drawSettingsWindow() {
     if (!ImGui::Begin("Settings", &open, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::End();
         if (!open) {
-            stateService.setCurrentState(lastNonSettingsState);
+            stateService.setCurrentState(uiState.lastNonSettingsState);
         }
         return;
     }
 
     ImGui::TextUnformatted("Appearance");
-    if (ImGui::RadioButton("Dark (Minimal)", currentTheme == UiTheme::Black)) {
+    if (ImGui::RadioButton("Dark (Minimal)", uiState.theme == UiTheme::Black)) {
         applyTheme(UiTheme::Black);
     }
-    if (ImGui::RadioButton("Light (Studio)", currentTheme == UiTheme::White)) {
+    if (ImGui::RadioButton("Light (Studio)", uiState.theme == UiTheme::White)) {
         applyTheme(UiTheme::White);
     }
 
@@ -832,7 +540,7 @@ void UiService::drawSettingsWindow() {
 
     ImGui::End();
     if (!open) {
-        stateService.setCurrentState(lastNonSettingsState);
+        stateService.setCurrentState(uiState.lastNonSettingsState);
     }
 }
 
@@ -943,17 +651,18 @@ void UiService::drawSimulation() {
 }
 
 void UiService::drawTransientPanel() {
+    auto& transientState = uiState.transient;
     ImGui::Separator();
     ImGui::TextUnformatted("Transient Analysis");
-    transientDuration = std::max(0.0f, transientDuration);
-    transientTimestep = std::max(1e-6f, transientTimestep);
-    ImGui::InputFloat("Duration (s)", &transientDuration, 0.0f, 0.0f, "%.6f");
-    ImGui::InputFloat("Step (s)", &transientTimestep, 0.0f, 0.0f, "%.6f");
-    ImGui::BeginDisabled(transientDuration <= 0.0f || transientTimestep <= 0.0f);
+    transientState.duration = std::max(0.0f, transientState.duration);
+    transientState.timestep = std::max(1e-6f, transientState.timestep);
+    ImGui::InputFloat("Duration (s)", &transientState.duration, 0.0f, 0.0f, "%.6f");
+    ImGui::InputFloat("Step (s)", &transientState.timestep, 0.0f, 0.0f, "%.6f");
+    ImGui::BeginDisabled(transientState.duration <= 0.0f || transientState.timestep <= 0.0f);
     if (ImGui::Button("Run transient simulation")) {
-        circuitController.simulateTransient(transientDuration, transientTimestep);
-        selectedTransientNodeIdx = -1;
-        selectedCurrentComponentId = 0;
+        circuitController.simulateTransient(transientState.duration, transientState.timestep);
+        transientState.selectedNodeIdx = -1;
+        transientState.selectedCurrentComponentId = 0;
     }
     ImGui::EndDisabled();
 
@@ -963,8 +672,8 @@ void UiService::drawTransientPanel() {
         return;
     }
 
-    if (selectedTransientNodeIdx < 0 && !transient.nodeIds.empty()) {
-        selectedTransientNodeIdx = 0;
+    if (transientState.selectedNodeIdx < 0 && !transient.nodeIds.empty()) {
+        transientState.selectedNodeIdx = 0;
     }
 
     auto nodeLabel = [&](unsigned int nodeId) -> std::string {
@@ -975,16 +684,16 @@ void UiService::drawTransientPanel() {
     };
 
     if (!transient.nodeIds.empty()) {
-        std::string currentLabel = (selectedTransientNodeIdx >= 0 &&
-                                    selectedTransientNodeIdx < static_cast<int>(transient.nodeIds.size()))
-                                        ? nodeLabel(transient.nodeIds[static_cast<std::size_t>(selectedTransientNodeIdx)])
+        std::string currentLabel = (transientState.selectedNodeIdx >= 0 &&
+                                    transientState.selectedNodeIdx < static_cast<int>(transient.nodeIds.size()))
+                                        ? nodeLabel(transient.nodeIds[static_cast<std::size_t>(transientState.selectedNodeIdx)])
                                         : "Select node";
         if (ImGui::BeginCombo("Voltage node", currentLabel.c_str())) {
             for (std::size_t idx = 0; idx < transient.nodeIds.size(); ++idx) {
-                bool selected = static_cast<int>(idx) == selectedTransientNodeIdx;
+                bool selected = static_cast<int>(idx) == transientState.selectedNodeIdx;
                 const std::string label = nodeLabel(transient.nodeIds[idx]);
                 if (ImGui::Selectable(label.c_str(), selected)) {
-                    selectedTransientNodeIdx = static_cast<int>(idx);
+                    transientState.selectedNodeIdx = static_cast<int>(idx);
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1035,10 +744,10 @@ void UiService::drawTransientPanel() {
         ImGui::Text("Samples: %zu  |  dt = %.6f s", samples.size(), transient.timestep);
     };
 
-    if (selectedTransientNodeIdx >= 0 &&
-        selectedTransientNodeIdx < static_cast<int>(transient.nodeIds.size())) {
-        const auto& series = transient.nodeVoltages[static_cast<std::size_t>(selectedTransientNodeIdx)];
-        plotSeries(series, transientVoltageBuffer, "Voltage (V)");
+    if (transientState.selectedNodeIdx >= 0 &&
+        transientState.selectedNodeIdx < static_cast<int>(transient.nodeIds.size())) {
+        const auto& series = transient.nodeVoltages[static_cast<std::size_t>(transientState.selectedNodeIdx)];
+        plotSeries(series, transientState.voltageBuffer, "Voltage (V)");
     }
 
     ImGui::Separator();
@@ -1061,8 +770,8 @@ void UiService::drawTransientPanel() {
         return;
     }
 
-    if (selectedCurrentComponentId == 0) {
-        selectedCurrentComponentId = components.front().id;
+    if (transientState.selectedCurrentComponentId == 0) {
+        transientState.selectedCurrentComponentId = components.front().id;
     }
 
     const auto labels = circuitController.buildComponentLabels();
@@ -1074,16 +783,16 @@ void UiService::drawTransientPanel() {
     };
 
     std::string componentCurrentLabel = "Select component";
-    if (auto comp = circuitController.getComponent(selectedCurrentComponentId)) {
+    if (auto comp = circuitController.getComponent(transientState.selectedCurrentComponentId)) {
         componentCurrentLabel = componentLabel(*comp);
     }
 
     if (ImGui::BeginCombo("Component", componentCurrentLabel.c_str())) {
         for (const auto& component : components) {
-            bool selected = component.id == selectedCurrentComponentId;
+            bool selected = component.id == transientState.selectedCurrentComponentId;
             const std::string label = componentLabel(component);
             if (ImGui::Selectable(label.c_str(), selected)) {
-                selectedCurrentComponentId = component.id;
+                transientState.selectedCurrentComponentId = component.id;
             }
             if (selected) {
                 ImGui::SetItemDefaultFocus();
@@ -1092,7 +801,7 @@ void UiService::drawTransientPanel() {
         ImGui::EndCombo();
     }
 
-    auto componentForCurrent = circuitController.getComponent(selectedCurrentComponentId);
+    auto componentForCurrent = circuitController.getComponent(transientState.selectedCurrentComponentId);
     if (!componentForCurrent) {
         ImGui::TextUnformatted("Component not found.");
         return;
@@ -1119,7 +828,7 @@ void UiService::drawTransientPanel() {
         case ComponentType::Resistor:
             if (componentValue == 0.0f) {
                 supported = false;
-                toolboxStatus = "Resistor value is zero.";
+                uiState.selection.status = "Resistor value is zero.";
                 break;
             }
             for (std::size_t i = 0; i < sampleCount; ++i) {
@@ -1130,7 +839,7 @@ void UiService::drawTransientPanel() {
         case ComponentType::Capacitor:
             if (componentValue == 0.0f || transient.timestep == 0.0) {
                 supported = false;
-                toolboxStatus = "Capacitor value or timestep invalid.";
+                uiState.selection.status = "Capacitor value or timestep invalid.";
                 break;
             }
             for (std::size_t i = 0; i < sampleCount; ++i) {
@@ -1155,24 +864,25 @@ void UiService::drawTransientPanel() {
     }
 
     if (supported) {
-        plotSeries(currentSamples, transientCurrentBuffer, "Current (A)");
+        plotSeries(currentSamples, transientState.currentBuffer, "Current (A)");
     }
 }
 
 void UiService::drawPropertiesWindow() {
-    if (!showPropertiesWindow || !propertiesComponent) {
+    auto& properties = uiState.properties;
+    if (!properties.showWindow || !properties.component) {
         return;
     }
 
-    bool open = showPropertiesWindow;
-    const ComponentView& component = *propertiesComponent;
+    bool open = properties.showWindow;
+    const ComponentView& component = *properties.component;
 
     if (!ImGui::Begin("Component Properties", &open)) {
         ImGui::End();
         if (!open) {
-            showPropertiesWindow = false;
-            propertiesComponent.reset();
-            propertiesStatus.clear();
+            properties.showWindow = false;
+            properties.component.reset();
+            properties.status.clear();
         }
         return;
     }
@@ -1190,27 +900,27 @@ void UiService::drawPropertiesWindow() {
     if (!componentHasEditableValue(component.type)) {
         ImGui::TextUnformatted("This component has no editable properties.");
     } else {
-        ImGui::InputFloat(componentValueLabel(component.type), &propertiesValue, 0.0f, 0.0f, "%.6f");
+        ImGui::InputFloat(componentValueLabel(component.type), &properties.value, 0.0f, 0.0f, "%.6f");
         if (ImGui::Button("Apply")) {
-            if (circuitController.updateComponentValue(component, propertiesValue)) {
-                propertiesStatus = "Properties updated.";
+            if (circuitController.updateComponentValue(component, properties.value)) {
+                properties.status = "Properties updated.";
             } else {
-                propertiesStatus = "Failed to update component.";
+                properties.status = "Failed to update component.";
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Reload")) {
             if (auto current = circuitController.getComponentValue(component)) {
-                propertiesValue = *current;
-                propertiesStatus.clear();
+                properties.value = *current;
+                properties.status.clear();
             } else {
-                propertiesStatus = "Unable to reload current value.";
+                properties.status = "Unable to reload current value.";
             }
         }
     }
 
-    if (!propertiesStatus.empty()) {
-        ImGui::TextUnformatted(propertiesStatus.c_str());
+    if (!properties.status.empty()) {
+        ImGui::TextUnformatted(properties.status.c_str());
     }
 
     if (ImGui::Button("Close")) {
@@ -1220,9 +930,9 @@ void UiService::drawPropertiesWindow() {
     ImGui::End();
 
     if (!open) {
-        showPropertiesWindow = false;
-        propertiesComponent.reset();
-        propertiesStatus.clear();
+        properties.showWindow = false;
+        properties.component.reset();
+        properties.status.clear();
     }
 }
 
@@ -1252,10 +962,10 @@ void UiService::drawUI() {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
     drawPalette();
     drawCanvas();
-    if (toolboxVisible) {
+    if (uiState.selection.toolboxVisible) {
         drawToolbox();
     } else {
-        toolboxHovered = false;
+        uiState.selection.toolboxHovered = false;
     }
     drawTopology();
     drawControlPanel();
@@ -1266,9 +976,9 @@ void UiService::drawUI() {
     }
     drawPropertiesWindow();
 
-    if (toolboxVisible &&
+    if (uiState.selection.toolboxVisible &&
         ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-        !toolboxHovered) {
-        toolboxVisible = false;
+        !uiState.selection.toolboxHovered) {
+        uiState.selection.toolboxVisible = false;
     }
 }

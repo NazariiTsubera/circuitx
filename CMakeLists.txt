@@ -80,6 +80,13 @@ add_executable(app
         app/main.cpp
         app/Application.cpp
         app/Application.h
+        app/core/CircuitEditor.cpp
+        app/core/CircuitEditor.h
+        app/core/CircuitSimulator.cpp
+        app/core/CircuitSimulator.h
+        app/ui/CanvasPanel.cpp
+        app/ui/CanvasPanel.h
+        app/ui/UiState.h
         app/services/Visualizer.cpp
         app/services/Visualizer.h
         app/services/UiService.cpp

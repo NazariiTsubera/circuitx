@@ -21,6 +21,7 @@ Application::Application()
     :
       window(sf::RenderWindow(sf::VideoMode::getDesktopMode(), "Circuitx", sf::Style::Titlebar | sf::Style::Default)),
       gridTool(gridSettings),
+      stateService(State::Edit),
       circuitController(circuitService, circuitView, gridTool),
       assetManager("../res/"),
       visualizer(gridSettings, circuitView),
