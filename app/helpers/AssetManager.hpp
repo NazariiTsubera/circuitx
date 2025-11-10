@@ -26,6 +26,7 @@ public:
         loadTexture("play", "play.png");
         loadTexture("pause", "pause.png");
         loadTexture("gear", "gear.png");
+        loadTexture("logo", "logo.png");
     }
     ~AssetManager() {}
 
@@ -42,11 +43,14 @@ public:
 
         if (!texture.loadFromFile(root + relPath))
             throw std::runtime_error("Could not load " + root + relPath);
+        texture.setSmooth(true);
 
         textures.emplace(name, texture);
 
         return texture;
     }
+
+    const std::string& getRoot() const { return root; }
 };
 
 

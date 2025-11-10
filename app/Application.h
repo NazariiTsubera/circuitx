@@ -5,6 +5,7 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 #include <circuitx/circuit.hpp>
+#include <string>
 #include <imgui.h>
 
 #include "services/CircuitController.h"
@@ -25,6 +26,7 @@ private:
     CircuitView circuitView;
     CircuitController circuitController;
     AssetManager assetManager;
+    std::string imguiConfigPath;
     Visualizer visualizer;
     UiService uiService;
 public:

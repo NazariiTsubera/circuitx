@@ -16,6 +16,7 @@
 #include "../ui/CanvasPanel.h"
 #include "../ui/UiState.h"
 #include "../ui/panels/ControlPanel.h"
+#include "../ui/panels/NavPanel.h"
 #include "../ui/panels/PalettePanel.h"
 #include "../ui/panels/PropertiesPanel.h"
 #include "../ui/panels/SettingsPanel.h"
@@ -40,6 +41,7 @@ private:
     std::function<void(const sf::Vector2f& newSize)> resizeCallback;
     UiState uiState;
     CanvasPanel canvasPanel;
+    NavPanel navPanel;
     PalettePanel palettePanel;
     ToolboxPanel toolboxPanel;
     ControlPanel controlPanel;
@@ -47,10 +49,12 @@ private:
     SettingsPanel settingsPanel;
     PropertiesPanel propertiesPanel;
     TopologyPanel topologyPanel;
+    std::string imguiConfigPath;
 public:
     UiService(sf::RenderWindow& window, Visualizer& visualizer,
             AssetManager& assetManager, const CoordinateTool& gridTool,
-            CircuitController& circuitController, StateService& stateService);
+            CircuitController& circuitController, StateService& stateService,
+            const std::string& imguiConfigPath);
     ~UiService();
     void drawUI();
 

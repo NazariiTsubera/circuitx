@@ -126,7 +126,8 @@ UiService::UiService(sf::RenderWindow& window,
     AssetManager& assetManager,
     const CoordinateTool& gridTool,
     CircuitController& circuitController,
-    StateService& stateService)
+    StateService& stateService,
+    const std::string& imguiConfigPath)
     : window(window),
       visualizer(visualizer),
       assetManager(assetManager),
@@ -136,13 +137,15 @@ UiService::UiService(sf::RenderWindow& window,
       circuitController(circuitController),
       stateService(stateService),
       canvasPanel(visualizer, circuitController, gridTool, wireTool, stateService),
+      navPanel(assetManager),
       palettePanel(assetManager),
       toolboxPanel(circuitController, gridTool),
       controlPanel(stateService, assetManager),
       simulationPanel(circuitController),
       settingsPanel(stateService, [this](UiTheme theme) { applyTheme(theme); }),
       propertiesPanel(circuitController),
-      topologyPanel(circuitController)
+      topologyPanel(circuitController),
+      imguiConfigPath(imguiConfigPath)
 {
 
     const bool imguiInitialized = ImGui::SFML::Init(window);
@@ -160,6 +163,7 @@ UiService::UiService(sf::RenderWindow& window,
     }
 
     ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = imguiConfigPath.c_str();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
     applyTheme(uiState.theme);
 
@@ -215,7 +219,21 @@ float UiService::computePixelScale() const {
 
 
 void UiService::drawUI() {
-    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+    navPanel.draw(uiState);
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGuiWindowFlags dockFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
+    if (ImGui::Begin("DockHost", nullptr, dockFlags)) {
+        ImGui::DockSpace(ImGui::GetID("CircuitXDockspace"), ImVec2(0.f, 0.f));
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
     palettePanel.draw(uiState);
     canvasPanel.draw(uiState, canvasTexture, canvasSize, resizeCallback);
     toolboxPanel.draw(uiState);

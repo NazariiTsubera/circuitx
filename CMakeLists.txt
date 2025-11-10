@@ -94,6 +94,8 @@ add_executable(app
         app/ui/panels/ToolboxPanel.h
         app/ui/panels/ControlPanel.cpp
         app/ui/panels/ControlPanel.h
+        app/ui/panels/NavPanel.cpp
+        app/ui/panels/NavPanel.h
         app/ui/panels/SimulationPanel.cpp
         app/ui/panels/SimulationPanel.h
         app/ui/panels/SettingsPanel.cpp
@@ -121,6 +123,11 @@ add_executable(app
 
 add_library(circuitx STATIC
         solver/src/circuit.cpp
+        solver/src/stamping/StampContext.cpp
+        solver/src/stamping/handlers/ResistorStampHandler.cpp
+        solver/src/stamping/handlers/VoltageSourceStampHandler.cpp
+        solver/src/stamping/handlers/CurrentSourceStampHandler.cpp
+        solver/src/stamping/handlers/CapacitorStampHandler.cpp
 )
 
 target_include_directories(circuitx PUBLIC solver/include/)
